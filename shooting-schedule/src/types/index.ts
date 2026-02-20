@@ -23,6 +23,8 @@ export interface Project {
 
 // 撮影地
 export type MealType = 'breakfast' | 'lunch' | 'dinner';
+export type LocationPriority = 'required' | 'high' | 'medium' | 'low';
+export type TimeSlot = 'normal' | 'early_morning' | 'night' | 'flexible';
 
 export interface Location {
   id: string;
@@ -37,6 +39,11 @@ export interface Location {
   bufferAfter: number;
   hasMeal: boolean;
   mealType?: MealType | null;
+  mealDurationMin: number;
+  priority: LocationPriority;
+  timeSlot: TimeSlot;
+  timeSlotStart?: string | null;
+  timeSlotEnd?: string | null;
   notes?: string | null;
   order: number;
   createdAt: Date;
@@ -109,6 +116,7 @@ export interface Transport {
 
 // 工程表
 export type ScheduleItemType = 'location' | 'accommodation' | 'meal' | 'rest_stop' | 'transport' | 'buffer';
+export type OptimizationType = 'none' | 'shortest_time' | 'shortest_distance' | 'balanced';
 
 export interface ScheduleItem {
   id: string;
@@ -123,6 +131,23 @@ export interface ScheduleItem {
   address?: string | null;
   notes?: string | null;
   order: number;
+  // Phase 2: 移動メタデータ
+  travelFromPreviousMin?: number | null;
+  travelFromPreviousKm?: number | null;
+  transportMode?: string | null;
+  bufferBeforeMin?: number | null;
+  bufferAfterMin?: number | null;
+  includesMeal?: boolean;
+  mealDurationMin?: number | null;
+  isOutsideWorkHours?: boolean;
+  isAutoInserted?: boolean;
+}
+
+export interface ExcludedLocation {
+  locationId: string;
+  name: string;
+  reason?: string | null;
+  priority?: string | null;
 }
 
 export interface Schedule {
@@ -131,8 +156,14 @@ export interface Schedule {
   generatedAt: Date;
   totalDays: number;
   notes?: string | null;
+  optimizationType?: OptimizationType | null;
+  totalDistanceKm?: number | null;
+  totalDurationMin?: number | null;
+  hasOvertimeWarning?: boolean;
+  calculatedDays?: number | null;
   createdAt: Date;
   items: ScheduleItem[];
+  excludedLocations?: ExcludedLocation[];
 }
 
 // 最適化入力
@@ -143,6 +174,37 @@ export interface OptimizeInput {
   meals: Meal[];
   restStops: RestStop[];
   transports: Transport[];
+  optimizationType?: OptimizationType;
+  distanceMatrix?: DistanceMatrix;
+}
+
+// Distance Matrix
+export interface DistanceMatrix {
+  durationMin: number[][];
+  distanceKm: number[][];
+}
+
+// ホテル提案
+export interface HotelSuggestion {
+  placeId: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  rating?: number;
+  distanceKm: number;
+}
+
+// TSP
+export interface TspInput {
+  nodes: { id: string; lat?: number | null; lng?: number | null }[];
+  distanceMatrix: number[][];
+  maxIterations?: number;
+}
+
+export interface TspResult {
+  route: number[];
+  totalDurationMin: number;
 }
 
 // API レスポンス

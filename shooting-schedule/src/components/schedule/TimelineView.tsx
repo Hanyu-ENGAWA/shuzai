@@ -83,12 +83,23 @@ export function TimelineView({ schedule }: Props) {
                   const totalMin = TOTAL_HOURS * 60;
                   const left = Math.max(0, (startMin / totalMin) * 100);
                   const width = Math.max(0.5, ((endMin - startMin) / totalMin) * 100);
+                  const isOutside = item.isOutsideWorkHours;
+                  const isTransport = item.type === 'transport';
                   return (
                     <div
                       key={item.id}
-                      className={`absolute top-1 bottom-1 rounded text-white text-xs flex items-center px-1 overflow-hidden cursor-pointer ${TYPE_COLORS[item.type]}`}
+                      className={[
+                        'absolute top-1 bottom-1 rounded text-white text-xs flex items-center px-1 overflow-hidden cursor-pointer',
+                        TYPE_COLORS[item.type],
+                        isOutside ? 'ring-2 ring-orange-500 ring-offset-0' : '',
+                        isTransport && item.travelFromPreviousMin ? 'bg-green-400' : '',
+                      ].join(' ')}
                       style={{ left: `${left}%`, width: `${width}%` }}
-                      title={`${item.name} ${item.startTime}〜${item.endTime}`}
+                      title={[
+                        `${item.name} ${item.startTime}〜${item.endTime}`,
+                        isTransport && item.travelFromPreviousMin ? `移動: ${item.travelFromPreviousMin}分` : '',
+                        isOutside ? '⚠ 稼働時間外' : '',
+                      ].filter(Boolean).join(' | ')}
                     >
                       <span className="truncate">{item.name}</span>
                     </div>
@@ -107,6 +118,14 @@ export function TimelineView({ schedule }: Props) {
               <span>{label}</span>
             </div>
           ))}
+          <div className="flex items-center gap-1.5 text-xs">
+            <div className="w-3 h-3 rounded bg-green-400" />
+            <span>実距離移動</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs">
+            <div className="w-3 h-3 rounded ring-2 ring-orange-500" />
+            <span>稼働時間外</span>
+          </div>
         </div>
       </div>
     </div>

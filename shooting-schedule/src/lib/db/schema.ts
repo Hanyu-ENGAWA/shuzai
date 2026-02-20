@@ -49,6 +49,11 @@ export const locations = sqliteTable('locations', {
   bufferAfter: integer('buffer_after').notNull().default(0),    // 分
   hasMeal: integer('has_meal', { mode: 'boolean' }).notNull().default(false),
   mealType: text('meal_type', { enum: ['breakfast', 'lunch', 'dinner'] }),
+  mealDurationMin: integer('meal_duration_min').notNull().default(60), // 食事時間(分)
+  priority: text('priority', { enum: ['required', 'high', 'medium', 'low'] }).notNull().default('medium'),
+  timeSlot: text('time_slot', { enum: ['normal', 'early_morning', 'night', 'flexible'] }).notNull().default('normal'),
+  timeSlotStart: text('time_slot_start'), // HH:mm (early_morning/night 時のみ)
+  timeSlotEnd: text('time_slot_end'),     // HH:mm
   notes: text('notes'),
   order: integer('order').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
@@ -124,6 +129,11 @@ export const schedules = sqliteTable('schedules', {
   generatedAt: integer('generated_at', { mode: 'timestamp' }).notNull(),
   totalDays: integer('total_days').notNull(),
   notes: text('notes'),
+  optimizationType: text('optimization_type', { enum: ['none', 'shortest_time', 'shortest_distance', 'balanced'] }),
+  totalDistanceKm: real('total_distance_km'),
+  totalDurationMin: integer('total_duration_min'),
+  hasOvertimeWarning: integer('has_overtime_warning', { mode: 'boolean' }).notNull().default(false),
+  calculatedDays: integer('calculated_days'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
@@ -143,14 +153,26 @@ export const scheduleItems = sqliteTable('schedule_items', {
   address: text('address'),
   notes: text('notes'),
   order: integer('order').notNull().default(0),
+  // Phase 2: 移動メタデータ
+  travelFromPreviousMin: integer('travel_from_previous_min'),
+  travelFromPreviousKm: real('travel_from_previous_km'),
+  transportMode: text('transport_mode'),
+  bufferBeforeMin: integer('buffer_before_min'),
+  bufferAfterMin: integer('buffer_after_min'),
+  includesMeal: integer('includes_meal', { mode: 'boolean' }).notNull().default(false),
+  mealDurationMin: integer('meal_duration_min'),
+  isOutsideWorkHours: integer('is_outside_work_hours', { mode: 'boolean' }).notNull().default(false),
+  isAutoInserted: integer('is_auto_inserted', { mode: 'boolean' }).notNull().default(false),
 });
 
-// 除外撮影地（特定日から除外）
+// 除外撮影地（最適化で除外された地点）
 export const excludedLocations = sqliteTable('excluded_locations', {
   id: text('id').primaryKey(),
   scheduleId: text('schedule_id').notNull().references(() => schedules.id, { onDelete: 'cascade' }),
   locationId: text('location_id').notNull().references(() => locations.id, { onDelete: 'cascade' }),
-  date: text('date').notNull(), // YYYY-MM-DD
+  date: text('date'), // YYYY-MM-DD (nullable in Phase 2)
+  reason: text('reason'), // 除外理由
+  priority: text('priority'), // 当時の優先度
 });
 
 // リレーション定義
