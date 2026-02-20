@@ -6,9 +6,9 @@ pages_build_output_dir = ".vercel/output/static"
 [[d1_databases]]
 binding = "DB"
 database_name = "shooting-schedule-db"
-database_id = "YOUR_DATABASE_ID_HERE"  # wrangler d1 create 後に更新
+database_id = "d635c4ca-4cf0-4726-bb30-7ee1a1589839"
 
 [vars]
-NEXTAUTH_URL = "https://your-domain.pages.dev"
+NEXTAUTH_URL = "https://shooting-schedule.pages.dev"
 
 # account_id は .env.local の CLOUDFLARE_ACCOUNT_ID (ae16a54b8562f1dd70f2dc9a6c8fb4f3) を参照

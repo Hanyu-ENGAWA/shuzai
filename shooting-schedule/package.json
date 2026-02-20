@@ -11,8 +11,8 @@
     "db:migrate:local": "wrangler d1 migrations apply shooting-schedule-db --local",
     "db:migrate:prod": "wrangler d1 migrations apply shooting-schedule-db --remote",
     "db:studio": "drizzle-kit studio",
-    "pages:build": "npx @cloudflare/next-on-pages",
-    "pages:preview": "npx wrangler pages dev"
+    "pages:build": "npm_config_ignore_scripts=true npx vercel build && npx @cloudflare/next-on-pages --skip-build",
+    "pages:dev": "npm_config_ignore_scripts=true npx vercel build && npx @cloudflare/next-on-pages --skip-build && CLOUDFLARE_API_TOKEN=n0ypRvAZfZPTM7ADXkPJT7vMKkfzFmBXBzkXFG3t npx wrangler pages dev .vercel/output/static --d1=DB:shooting-schedule-db"
   },
   "dependencies": {
     "@cloudflare/workers-types": "^4.20260219.0",
@@ -23,7 +23,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.1",
     "lucide-react": "^0.575.0",
-    "next": "16.1.6",
+    "next": "^15.4.11",
     "next-auth": "^5.0.0-beta.30",
     "next-themes": "^0.4.6",
     "radix-ui": "^1.4.3",

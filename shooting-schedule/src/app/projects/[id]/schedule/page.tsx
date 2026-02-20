@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+export const runtime = 'edge';
+
+import { useEffect, useState, startTransition } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Header } from '@/components/layout/Header';
@@ -27,7 +29,7 @@ export default function SchedulePage() {
 
   useEffect(() => {
     if (schedules.length > 0) {
-      setCurrentSchedule(schedules[0]);
+      startTransition(() => setCurrentSchedule(schedules[0]));
     }
   }, [schedules]);
 
