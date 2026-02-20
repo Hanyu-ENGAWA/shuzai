@@ -90,7 +90,7 @@ export function buildSchedule(input: OptimizeInput): Omit<Schedule, 'id' | 'crea
       }
 
       // 撮影
-      dayItems.push(makeItem(scheduleId, day, date, currentMin, loc.shootingDuration, 'location', loc.id, loc.name, loc.address, dayItems.length));
+      dayItems.push(makeItem(scheduleId, day, date, currentMin, loc.shootingDuration, 'shooting', loc.id, loc.name, loc.address, dayItems.length));
       currentMin += loc.shootingDuration;
 
       // バッファ後

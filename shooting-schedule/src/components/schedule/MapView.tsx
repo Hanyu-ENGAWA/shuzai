@@ -22,7 +22,7 @@ export function MapView({ schedule }: MapViewProps) {
   // items の notes 等から取れないので、address ベースで表示し
   // 座標がある場合のみマーカー表示（今後は items に lat/lng を付与する）
   const allPoints = schedule.items.filter(
-    (item) => item.type === 'location'
+    (item) => item.type === 'shooting'
   ) as PointWithCoords[];
 
   // 実際の座標は items に含まれていないため空になるが、

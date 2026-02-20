@@ -133,7 +133,7 @@ export interface Transport {
 }
 
 // 工程表
-export type ScheduleItemType = 'location' | 'accommodation' | 'meal' | 'rest_stop' | 'transport' | 'buffer';
+export type ScheduleItemType = 'shooting' | 'accommodation' | 'meal' | 'rest' | 'transport' | 'auto_meal' | 'buffer';
 export type OptimizationType = 'none' | 'shortest_time' | 'shortest_distance' | 'balanced';
 
 export interface ScheduleItem {

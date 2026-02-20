@@ -9,20 +9,22 @@ interface Props {
 }
 
 const TYPE_COLORS: Record<ScheduleItem['type'], string> = {
-  location: 'bg-blue-500',
+  shooting: 'bg-blue-500',
   accommodation: 'bg-purple-500',
   meal: 'bg-green-500',
-  rest_stop: 'bg-yellow-500',
+  rest: 'bg-yellow-500',
   transport: 'bg-gray-400',
+  auto_meal: 'bg-lime-400',
   buffer: 'bg-orange-300',
 };
 
 const TYPE_LABELS: Record<ScheduleItem['type'], string> = {
-  location: '撮影',
+  shooting: '撮影',
   accommodation: '宿泊',
   meal: '食事',
-  rest_stop: '休憩',
+  rest: '休憩',
   transport: '移動',
+  auto_meal: '昼食（自動）',
   buffer: 'バッファ',
 };
 

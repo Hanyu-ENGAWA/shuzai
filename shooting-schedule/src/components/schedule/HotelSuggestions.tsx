@@ -29,7 +29,7 @@ export function HotelSuggestions({ schedule, locationCoords }: Props) {
   for (let day = 1; day < maxDay; day++) {
     // 当日の location タイプアイテムを抽出して最後の1件を取得
     const dayLocations = schedule.items
-      .filter((item) => item.day === day && item.type === 'location' && item.refId)
+      .filter((item) => item.day === day && item.type === 'shooting' && item.refId)
       .sort((a, b) => {
         const aMin = parseInt(a.startTime.replace(':', ''), 10);
         const bMin = parseInt(b.startTime.replace(':', ''), 10);

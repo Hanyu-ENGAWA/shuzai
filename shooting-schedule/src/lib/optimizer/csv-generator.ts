@@ -1,11 +1,12 @@
 import type { Schedule, ScheduleItem } from '@/types';
 
 const TYPE_LABELS: Record<ScheduleItem['type'], string> = {
-  location: '撮影',
+  shooting: '撮影',
   accommodation: '宿泊',
   meal: '食事',
-  rest_stop: '休憩',
+  rest: '休憩',
   transport: '移動',
+  auto_meal: '昼食（自動）',
   buffer: 'バッファ',
 };
 

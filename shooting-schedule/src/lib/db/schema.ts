@@ -167,7 +167,7 @@ export const scheduleItems = sqliteTable('schedule_items', {
   startTime: text('start_time').notNull(), // HH:mm
   endTime: text('end_time').notNull(),     // HH:mm
   type: text('type', {
-    enum: ['location', 'accommodation', 'meal', 'rest_stop', 'transport', 'buffer']
+    enum: ['shooting', 'accommodation', 'meal', 'rest', 'transport', 'auto_meal', 'buffer']
   }).notNull(),
   refId: text('ref_id'),   // 参照元ID (locations.id, meals.id など)
   name: text('name').notNull(),

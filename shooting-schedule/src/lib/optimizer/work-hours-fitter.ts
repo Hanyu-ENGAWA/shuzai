@@ -178,7 +178,7 @@ export function fitToWorkHours(input: FitterInput): FitterOutput {
 
       // 撮影
       const shootItem = makeItem(
-        scheduleId, day, date, currentMin, loc.shootingDuration, 'location', loc.id,
+        scheduleId, day, date, currentMin, loc.shootingDuration, 'shooting', loc.id,
         loc.name, loc.address, dayItems.length
       );
       shootItem.isOutsideWorkHours = isOutside;

@@ -8,11 +8,12 @@ interface Props {
 }
 
 const TYPE_CONFIG: Record<ScheduleItem['type'], { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
-  location: { label: '撮影', variant: 'default' },
+  shooting: { label: '撮影', variant: 'default' },
   accommodation: { label: '宿泊', variant: 'secondary' },
   meal: { label: '食事', variant: 'outline' },
-  rest_stop: { label: '休憩', variant: 'outline' },
+  rest: { label: '休憩', variant: 'outline' },
   transport: { label: '移動', variant: 'outline' },
+  auto_meal: { label: '昼食（自動）', variant: 'outline' },
   buffer: { label: 'バッファ', variant: 'outline' },
 };
 
