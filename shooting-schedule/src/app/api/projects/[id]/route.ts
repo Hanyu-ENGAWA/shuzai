@@ -18,6 +18,16 @@ const updateProjectSchema = z.object({
   earlyMorningStart: z.string().optional(),
   allowNightShooting: z.boolean().optional(),
   nightShootingEnd: z.string().optional(),
+  departureLocation: z.string().optional(),
+  departureLat: z.number().optional(),
+  departureLng: z.number().optional(),
+  departurePlaceId: z.string().optional(),
+  returnLocation: z.string().optional(),
+  returnLat: z.number().optional(),
+  returnLng: z.number().optional(),
+  returnPlaceId: z.string().optional(),
+  returnSameAsDeparture: z.boolean().optional(),
+  defaultTransportMode: z.enum(['driving', 'transit', 'walking', 'bicycling']).optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };

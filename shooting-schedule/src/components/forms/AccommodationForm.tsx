@@ -18,6 +18,8 @@ const schema = z.object({
   checkOutDate: z.string().optional(),
   checkInTime: z.string().optional(),
   checkOutTime: z.string().optional(),
+  nights: z.coerce.number().int().min(1).optional(),
+  budgetPerNight: z.coerce.number().int().min(0).optional(),
   notes: z.string().optional(),
 });
 
@@ -95,6 +97,23 @@ export function AccommodationForm({ onSubmit, isLoading }: Props) {
             <FormItem>
               <FormLabel>チェックアウト時刻</FormLabel>
               <FormControl><Input type="time" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField control={form.control} name="nights" render={({ field }) => (
+            <FormItem>
+              <FormLabel>泊数</FormLabel>
+              <FormControl><Input type="number" min={1} {...field} placeholder="例: 2" /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="budgetPerNight" render={({ field }) => (
+            <FormItem>
+              <FormLabel>1泊予算（円）</FormLabel>
+              <FormControl><Input type="number" min={0} {...field} placeholder="例: 10000" /></FormControl>
               <FormMessage />
             </FormItem>
           )} />

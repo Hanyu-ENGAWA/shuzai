@@ -21,13 +21,15 @@ export function solveTSP(input: TspInput): TspResult {
   };
 
   // Phase 1: Nearest Neighbor 法
-  // 早朝撮影地があればそこから開始
-  let startNode = 0;
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i];
-    if ('timeSlot' in node && (node as { timeSlot?: string }).timeSlot === 'early_morning') {
-      startNode = i;
-      break;
+  // fixedStartIndex が指定されていればそれを優先、次に早朝撮影地
+  let startNode = input.fixedStartIndex ?? 0;
+  if (input.fixedStartIndex == null) {
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      if ('timeSlot' in node && (node as { timeSlot?: string }).timeSlot === 'early_morning') {
+        startNode = i;
+        break;
+      }
     }
   }
 

@@ -45,8 +45,8 @@ export function LocationForm({ onSubmit, isLoading }: Props) {
     resolver: zodResolver(schema),
     defaultValues: {
       shootingDuration: 60,
-      bufferBefore: 0,
-      bufferAfter: 0,
+      bufferBefore: 10,
+      bufferAfter: 10,
       hasMeal: false,
       mealDurationMin: 60,
       priority: 'medium',

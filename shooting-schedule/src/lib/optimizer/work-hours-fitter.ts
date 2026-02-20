@@ -13,6 +13,8 @@ export interface FitterInput {
   travelDistanceMatrix?: number[][] | null; // orderedLocations 間の移動距離（km）
   scheduleId: string;
   startDate?: string | null;
+  departureTravelMin?: number; // 出発地 → Day1 最初の撮影地 の移動時間（分）
+  departureTravelKm?: number;  // 出発地 → Day1 最初の撮影地 の移動距離（km）
 }
 
 export interface FitterOutput {
@@ -34,6 +36,8 @@ export function fitToWorkHours(input: FitterInput): FitterOutput {
     travelDistanceMatrix,
     scheduleId,
     startDate,
+    departureTravelMin,
+    departureTravelKm,
   } = input;
 
   const workStartMin = hhmmToMinutes(project.workStartTime);
@@ -89,6 +93,10 @@ export function fitToWorkHours(input: FitterInput): FitterOutput {
       if (prevLocIndex >= 0 && travelDurationMatrix) {
         const rawTravel = travelDurationMatrix[prevLocIndex]?.[locOrigIndex] ?? -1;
         travelMin = rawTravel >= 0 ? rawTravel : DEFAULT_TRAVEL_MIN;
+      } else if (dayItems.length === 0 && day === 1 && departureTravelMin != null && departureTravelMin > 0) {
+        // Day 1 最初の地点: 出発地からの移動
+        travelMin = departureTravelMin;
+        travelKm = departureTravelKm ?? 0;
       } else if (dayItems.length === 0) {
         travelMin = 0; // 当日最初の地点は移動なし
       }

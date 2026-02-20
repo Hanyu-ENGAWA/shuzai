@@ -1,10 +1,11 @@
 'use client';
 
-import type { Schedule, ScheduleItem } from '@/types';
+import type { Schedule, ScheduleItem, Project } from '@/types';
 import { hhmmToMinutes } from '@/lib/optimizer/buffer-calculator';
 
 interface Props {
   schedule: Schedule;
+  project?: Pick<Project, 'workStartTime' | 'workEndTime' | 'allowEarlyMorning' | 'earlyMorningStart' | 'allowNightShooting' | 'nightShootingEnd'>;
 }
 
 const TYPE_COLORS: Record<ScheduleItem['type'], string> = {
@@ -29,7 +30,7 @@ const HOUR_START = 5;
 const HOUR_END = 23;
 const TOTAL_HOURS = HOUR_END - HOUR_START;
 
-export function TimelineView({ schedule }: Props) {
+export function TimelineView({ schedule, project }: Props) {
   const byDay = new Map<number, ScheduleItem[]>();
   for (const item of schedule.items) {
     if (!byDay.has(item.day)) byDay.set(item.day, []);
@@ -37,6 +38,17 @@ export function TimelineView({ schedule }: Props) {
   }
 
   const hours = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => HOUR_START + i);
+
+  // 稼働時間帯の計算（タイムライン上での位置）
+  const workStart = project ? hhmmToMinutes(
+    project.allowEarlyMorning && project.earlyMorningStart ? project.earlyMorningStart : project.workStartTime
+  ) : null;
+  const workEnd = project ? hhmmToMinutes(
+    project.allowNightShooting && project.nightShootingEnd ? project.nightShootingEnd : project.workEndTime
+  ) : null;
+  const totalMin = TOTAL_HOURS * 60;
+  const workStartPct = workStart != null ? Math.max(0, ((workStart - HOUR_START * 60) / totalMin) * 100) : null;
+  const workEndPct = workEnd != null ? Math.min(100, ((workEnd - HOUR_START * 60) / totalMin) * 100) : null;
 
   return (
     <div className="overflow-x-auto">
@@ -67,7 +79,14 @@ export function TimelineView({ schedule }: Props) {
                 <div>{day}日目</div>
                 {date && <div className="text-xs text-muted-foreground">{date.slice(5)}</div>}
               </div>
-              <div className="flex-1 relative h-10 bg-muted/30 rounded border">
+              <div className="flex-1 relative h-10 bg-muted/30 rounded border overflow-hidden">
+                {/* 稼働時間帯ハイライト（白背景） */}
+                {workStartPct != null && workEndPct != null && (
+                  <div
+                    className="absolute top-0 bottom-0 bg-white/70"
+                    style={{ left: `${workStartPct}%`, width: `${workEndPct - workStartPct}%` }}
+                  />
+                )}
                 {/* 時間グリッド線 */}
                 {hours.map((h) => (
                   <div

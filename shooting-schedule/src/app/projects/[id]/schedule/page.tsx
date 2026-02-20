@@ -194,7 +194,7 @@ export default function SchedulePage() {
                     <CardTitle className="text-base">タイムライン表示</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <TimelineView schedule={currentSchedule} />
+                    <TimelineView schedule={currentSchedule} project={currentProject ?? undefined} />
                   </CardContent>
                 </Card>
               </TabsContent>

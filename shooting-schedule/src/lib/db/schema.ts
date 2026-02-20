@@ -17,20 +17,34 @@ export const projects = sqliteTable('projects', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description'),
-  status: text('status', { enum: ['active', 'archived'] }).notNull().default('active'),
+  status: text('status', { enum: ['draft', 'optimized', 'archived'] }).notNull().default('draft'),
   // 撮影期間モード: 'fixed'(日程固定) | 'auto'(自動算出)
   durationMode: text('duration_mode', { enum: ['fixed', 'auto'] }).notNull().default('fixed'),
   // 固定モード用
   startDate: text('start_date'), // YYYY-MM-DD
   endDate: text('end_date'),     // YYYY-MM-DD
   // 稼働時間設定
-  workStartTime: text('work_start_time').notNull().default('08:00'), // HH:mm
-  workEndTime: text('work_end_time').notNull().default('19:00'),
+  workStartTime: text('work_start_time').notNull().default('09:00'), // HH:mm
+  workEndTime: text('work_end_time').notNull().default('18:00'),
   // 早朝/夜間撮影対応
   allowEarlyMorning: integer('allow_early_morning', { mode: 'boolean' }).notNull().default(false),
   earlyMorningStart: text('early_morning_start').default('05:00'),
   allowNightShooting: integer('allow_night_shooting', { mode: 'boolean' }).notNull().default(false),
   nightShootingEnd: text('night_shooting_end').default('22:00'),
+  // 出発地・解散場所
+  departureLocation: text('departure_location'),
+  departureLat: real('departure_lat'),
+  departureLng: real('departure_lng'),
+  departurePlaceId: text('departure_place_id'),
+  returnLocation: text('return_location'),
+  returnLat: real('return_lat'),
+  returnLng: real('return_lng'),
+  returnPlaceId: text('return_place_id'),
+  returnSameAsDeparture: integer('return_same_as_departure', { mode: 'boolean' }).notNull().default(true),
+  // デフォルト移動手段 (driving / transit / walking / bicycling)
+  defaultTransportMode: text('default_transport_mode', {
+    enum: ['driving', 'transit', 'walking', 'bicycling'],
+  }).notNull().default('driving'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
@@ -73,6 +87,9 @@ export const accommodations = sqliteTable('accommodations', {
   checkOutDate: text('check_out_date'), // YYYY-MM-DD
   checkInTime: text('check_in_time').default('15:00'),
   checkOutTime: text('check_out_time').default('10:00'),
+  nights: integer('nights'),
+  budgetPerNight: integer('budget_per_night'),
+  isAutoSuggested: integer('is_auto_suggested', { mode: 'boolean' }).notNull().default(false),
   notes: text('notes'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
@@ -115,9 +132,13 @@ export const restStops = sqliteTable('rest_stops', {
 export const transports = sqliteTable('transports', {
   id: text('id').primaryKey(),
   projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-  type: text('type', { enum: ['car', 'train', 'bus', 'walk', 'other'] }).notNull().default('car'),
+  // 仕様書準拠: transportType = to_location(現地まで) / local(現地内)
+  transportType: text('transport_type', { enum: ['to_location', 'local'] }).notNull().default('local'),
+  // mode = driving / transit / walking / bicycling
+  mode: text('mode', { enum: ['driving', 'transit', 'walking', 'bicycling'] }).notNull().default('driving'),
+  description: text('description'), // 例: 新幹線, レンタカー
   notes: text('notes'),
-  defaultTravelBuffer: integer('default_travel_buffer').notNull().default(10), // 分
+  defaultTravelBuffer: integer('default_travel_buffer').notNull().default(10), // 分（後方互換）
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });

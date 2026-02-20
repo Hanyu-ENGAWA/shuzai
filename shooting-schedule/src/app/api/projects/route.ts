@@ -13,12 +13,22 @@ const createProjectSchema = z.object({
   durationMode: z.enum(['fixed', 'auto']).default('fixed'),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  workStartTime: z.string().default('08:00'),
-  workEndTime: z.string().default('19:00'),
+  workStartTime: z.string().default('09:00'),
+  workEndTime: z.string().default('18:00'),
   allowEarlyMorning: z.boolean().default(false),
   earlyMorningStart: z.string().optional(),
   allowNightShooting: z.boolean().default(false),
   nightShootingEnd: z.string().optional(),
+  departureLocation: z.string().optional(),
+  departureLat: z.number().optional(),
+  departureLng: z.number().optional(),
+  departurePlaceId: z.string().optional(),
+  returnLocation: z.string().optional(),
+  returnLat: z.number().optional(),
+  returnLng: z.number().optional(),
+  returnPlaceId: z.string().optional(),
+  returnSameAsDeparture: z.boolean().default(true),
+  defaultTransportMode: z.enum(['driving', 'transit', 'walking', 'bicycling']).default('driving'),
 });
 
 export async function GET(req: NextRequest) {
@@ -48,6 +58,7 @@ export async function POST(req: NextRequest) {
     id: uuidv4(),
     userId: session.user.id,
     ...parsed.data,
+    status: 'draft',
     createdAt: now,
     updatedAt: now,
   }).returning();

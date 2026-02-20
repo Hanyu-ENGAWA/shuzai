@@ -13,7 +13,8 @@ type Params = { params: Promise<{ id: string }> };
 async function fetchDistanceMatrix(
   locations: OptimizeInput['locations'],
   apiKey: string,
-  baseUrl: string
+  baseUrl: string,
+  transportMode: string = 'driving'
 ): Promise<DistanceMatrix | null> {
   const withCoords = locations.filter((l) => l.lat != null && l.lng != null);
   if (withCoords.length < 2) return null;
@@ -34,7 +35,7 @@ async function fetchDistanceMatrix(
     url.searchParams.set('destinations', destinationsStr);
     url.searchParams.set('key', apiKey);
     url.searchParams.set('language', 'ja');
-    url.searchParams.set('mode', 'driving');
+    url.searchParams.set('mode', transportMode);
 
     const res = await fetch(url.toString());
     const data = await res.json() as {
@@ -122,7 +123,8 @@ export async function POST(req: NextRequest, { params }: Params) {
       distanceMatrix = await fetchDistanceMatrix(
         locations as OptimizeInput['locations'],
         apiKey,
-        baseUrl
+        baseUrl,
+        project.defaultTransportMode ?? 'driving'
       ).catch(() => null);
     }
   }

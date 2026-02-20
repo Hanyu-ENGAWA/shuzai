@@ -19,6 +19,8 @@ const accommodationSchema = z.object({
   checkOutDate: z.string().optional(),
   checkInTime: z.string().default('15:00'),
   checkOutTime: z.string().default('10:00'),
+  nights: z.number().int().min(1).optional(),
+  budgetPerNight: z.number().int().min(0).optional(),
   notes: z.string().optional(),
 });
 

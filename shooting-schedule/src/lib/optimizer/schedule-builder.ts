@@ -158,6 +158,21 @@ function makeItem(
   };
 }
 
+// Haversine 距離計算（km）
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Haversine から移動時間（分）を概算（時速50km）
+function haversineMin(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  return Math.round((haversineKm(lat1, lng1, lat2, lng2) / 50) * 60);
+}
+
 function getDateString(baseDate: string, offsetDays: number): string {
   const d = new Date(baseDate);
   d.setDate(d.getDate() + offsetDays);
@@ -181,9 +196,12 @@ export function buildScheduleV2(input: OptimizeInput): Omit<Schedule, 'id' | 'cr
   const scheduleId = uuidv4();
 
   let orderedLocations = sortedLocations;
+  let departureTravelMin: number | undefined;
+  let departureTravelKm: number | undefined;
 
   // TSP で順序を決定
   if (optimizationType !== 'none' && distanceMatrix && sortedLocations.length > 1) {
+    const hasDeparture = project.departureLat != null && project.departureLng != null;
     let costMatrix: number[][];
 
     if (optimizationType === 'shortest_time') {
@@ -203,12 +221,68 @@ export function buildScheduleV2(input: OptimizeInput): Omit<Schedule, 'id' | 'cr
       );
     }
 
+    let tspNodes = sortedLocations.map((l) => ({ id: l.id, lat: l.lat, lng: l.lng }));
+    let tspMatrix = costMatrix;
+    let fixedStartIndex: number | undefined;
+
+    // 出発地を TSP のノード 0 として追加（固定開始ノード）
+    if (hasDeparture) {
+      const depLat = project.departureLat!;
+      const depLng = project.departureLng!;
+      const n = sortedLocations.length;
+
+      // 出発地 → 各地点 / 各地点 → 出発地 のコストを Haversine で計算
+      const depRow = sortedLocations.map((l) => {
+        if (l.lat == null || l.lng == null) return 99999;
+        return haversineMin(depLat, depLng, l.lat, l.lng);
+      });
+      // 出発地は終点にならないので大きなコストを設定（非対称 TSP の擬似対応）
+      const depCol = Array(n).fill(0);
+
+      // 拡張コスト行列: node 0 = 出発地, node 1..n = 撮影地
+      const augSize = n + 1;
+      const augMatrix: number[][] = Array.from({ length: augSize }, () => Array(augSize).fill(99999));
+      // 出発地 → 撮影地
+      for (let j = 0; j < n; j++) augMatrix[0][j + 1] = depRow[j];
+      // 撮影地 → 撮影地
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          augMatrix[i + 1][j + 1] = costMatrix[i][j] >= 0 ? costMatrix[i][j] : 99999;
+        }
+      }
+      // 撮影地 → 出発地（大きなコスト: 出発地を終点にしない）
+      for (let i = 0; i < n; i++) augMatrix[i + 1][0] = 99999;
+
+      tspNodes = [
+        { id: '_departure', lat: depLat, lng: depLng },
+        ...tspNodes,
+      ];
+      tspMatrix = augMatrix;
+      fixedStartIndex = 0;
+    }
+
     const tspResult = solveTSP({
-      nodes: sortedLocations.map((l) => ({ id: l.id, lat: l.lat, lng: l.lng })),
-      distanceMatrix: costMatrix,
+      nodes: tspNodes,
+      distanceMatrix: tspMatrix,
+      fixedStartIndex,
     });
 
-    orderedLocations = tspResult.route.map((i) => sortedLocations[i]);
+    if (hasDeparture) {
+      // route[0] = 出発地ノード（除外）, route[1..] = 撮影地インデックス（1始まり → -1 で 0始まりに）
+      const locationRoute = tspResult.route.slice(1).map((i) => sortedLocations[i - 1]);
+      orderedLocations = locationRoute;
+      // 出発地 → 最初の撮影地 の移動時間を Haversine から推定（Day1 表示用）
+      if (orderedLocations.length > 0) {
+        const first = orderedLocations[0];
+        if (first.lat != null && first.lng != null) {
+          const km = haversineKm(project.departureLat!, project.departureLng!, first.lat, first.lng);
+          departureTravelKm = km;
+          departureTravelMin = Math.round((km / 50) * 60); // 時速50kmで概算
+        }
+      }
+    } else {
+      orderedLocations = tspResult.route.map((i) => sortedLocations[i]);
+    }
   }
 
   // 日別タイムテーブル生成
@@ -221,6 +295,8 @@ export function buildScheduleV2(input: OptimizeInput): Omit<Schedule, 'id' | 'cr
     travelDistanceMatrix: distanceMatrix?.distanceKm ?? null,
     scheduleId,
     startDate,
+    departureTravelMin,
+    departureTravelKm,
   });
 
   return {

@@ -1,6 +1,7 @@
 // プロジェクト
 export type DurationMode = 'fixed' | 'auto';
-export type ProjectStatus = 'active' | 'archived';
+export type ProjectStatus = 'draft' | 'optimized' | 'archived';
+export type TransportMode = 'driving' | 'transit' | 'walking' | 'bicycling';
 
 export interface Project {
   id: string;
@@ -17,6 +18,18 @@ export interface Project {
   earlyMorningStart?: string | null;
   allowNightShooting: boolean;
   nightShootingEnd?: string | null;
+  // 出発地・解散場所
+  departureLocation?: string | null;
+  departureLat?: number | null;
+  departureLng?: number | null;
+  departurePlaceId?: string | null;
+  returnLocation?: string | null;
+  returnLat?: number | null;
+  returnLng?: number | null;
+  returnPlaceId?: string | null;
+  returnSameAsDeparture: boolean;
+  // デフォルト移動手段
+  defaultTransportMode: TransportMode;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -63,6 +76,9 @@ export interface Accommodation {
   checkOutDate?: string | null;
   checkInTime?: string | null;
   checkOutTime?: string | null;
+  nights?: number | null;
+  budgetPerNight?: number | null;
+  isAutoSuggested?: boolean;
   notes?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -102,12 +118,14 @@ export interface RestStop {
 }
 
 // 移動手段
-export type TransportType = 'car' | 'train' | 'bus' | 'walk' | 'other';
+export type TransportType = 'to_location' | 'local';
 
 export interface Transport {
   id: string;
   projectId: string;
-  type: TransportType;
+  transportType: TransportType;
+  mode: TransportMode;
+  description?: string | null;
   notes?: string | null;
   defaultTravelBuffer: number;
   createdAt: Date;
@@ -166,6 +184,14 @@ export interface Schedule {
   excludedLocations?: ExcludedLocation[];
 }
 
+// 座標を持つ地点（出発地・解散場所などに使用）
+export interface LatLngPoint {
+  name: string;
+  lat: number;
+  lng: number;
+  placeId?: string | null;
+}
+
 // 最適化入力
 export interface OptimizeInput {
   project: Project;
@@ -196,10 +222,18 @@ export interface HotelSuggestion {
 }
 
 // TSP
+export interface TspNode {
+  id: string;
+  lat?: number | null;
+  lng?: number | null;
+  timeSlot?: string;
+}
+
 export interface TspInput {
-  nodes: { id: string; lat?: number | null; lng?: number | null }[];
+  nodes: TspNode[];
   distanceMatrix: number[][];
   maxIterations?: number;
+  fixedStartIndex?: number; // 出発地を固定開始ノードとして指定
 }
 
 export interface TspResult {
