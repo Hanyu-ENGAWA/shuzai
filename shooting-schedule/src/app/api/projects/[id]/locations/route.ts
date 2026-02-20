@@ -20,6 +20,11 @@ const locationSchema = z.object({
   bufferAfter: z.number().int().min(0).default(0),
   hasMeal: z.boolean().default(false),
   mealType: z.enum(['breakfast', 'lunch', 'dinner']).optional(),
+  mealDurationMin: z.number().int().min(0).default(60),
+  priority: z.enum(['required', 'high', 'medium', 'low']).default('medium'),
+  timeSlot: z.enum(['normal', 'early_morning', 'night', 'flexible']).default('normal'),
+  timeSlotStart: z.string().optional(),
+  timeSlotEnd: z.string().optional(),
   notes: z.string().optional(),
   order: z.number().int().default(0),
 });

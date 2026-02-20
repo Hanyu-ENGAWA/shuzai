@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Project, Location, Accommodation, Meal, RestStop, Transport, Schedule } from '@/types';
+import type { Project, Location, Accommodation, Meal, RestStop, Transport, Schedule, OptimizationType } from '@/types';
 
 interface ProjectState {
   projects: Project[];
@@ -29,7 +29,7 @@ interface ProjectState {
   addRestStop: (projectId: string, data: Partial<RestStop>) => Promise<RestStop | null>;
   addTransport: (projectId: string, data: Partial<Transport>) => Promise<Transport | null>;
 
-  generateSchedule: (projectId: string) => Promise<Schedule | null>;
+  generateSchedule: (projectId: string, optimizationType?: OptimizationType) => Promise<Schedule | null>;
   fetchSchedules: (projectId: string) => Promise<void>;
 
   setError: (error: string | null) => void;
@@ -189,9 +189,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     return item;
   },
 
-  generateSchedule: async (projectId) => {
+  generateSchedule: async (projectId, optimizationType = 'none') => {
     const schedule = await apiFetch<Schedule>(`/api/projects/${projectId}/optimize`, {
       method: 'POST',
+      body: JSON.stringify({ optimizationType }),
     });
     if (schedule) {
       set((state) => ({ schedules: [schedule, ...state.schedules] }));

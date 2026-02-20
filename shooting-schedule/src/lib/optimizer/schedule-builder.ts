@@ -2,6 +2,8 @@ import type { OptimizeInput, ScheduleItem, Schedule } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { hhmmToMinutes, minutesToHHmm, calcLocationTotalMinutes, calcEndTime } from './buffer-calculator';
 import { insertAutoMeal } from './auto-meal-inserter';
+import { solveTSP } from './tsp-solver';
+import { fitToWorkHours } from './work-hours-fitter';
 
 const DEFAULT_TRAVEL_BUFFER = 10; // 分
 
@@ -160,4 +162,78 @@ function getDateString(baseDate: string, offsetDays: number): string {
   const d = new Date(baseDate);
   d.setDate(d.getDate() + offsetDays);
   return d.toISOString().split('T')[0];
+}
+
+/**
+ * Phase 2 スケジュールビルダー
+ * - optimizationType に基づき TSP → fitToWorkHours を実行
+ */
+export function buildScheduleV2(input: OptimizeInput): Omit<Schedule, 'id' | 'createdAt'> & {
+  excludedLocations: import('@/types').ExcludedLocation[];
+  totalDistanceKm: number;
+  totalDurationMin: number;
+  hasOvertimeWarning: boolean;
+  calculatedDays: number;
+} {
+  const { project, locations, meals, transports, distanceMatrix, optimizationType = 'none' } = input;
+
+  const sortedLocations = [...locations].sort((a, b) => a.order - b.order);
+  const scheduleId = uuidv4();
+
+  let orderedLocations = sortedLocations;
+
+  // TSP で順序を決定
+  if (optimizationType !== 'none' && distanceMatrix && sortedLocations.length > 1) {
+    let costMatrix: number[][];
+
+    if (optimizationType === 'shortest_time') {
+      costMatrix = distanceMatrix.durationMin;
+    } else if (optimizationType === 'shortest_distance') {
+      costMatrix = distanceMatrix.distanceKm;
+    } else {
+      // balanced: 0.6 × 移動時間 + 0.4 × 移動距離（正規化なしの混合）
+      const dur = distanceMatrix.durationMin;
+      const dist = distanceMatrix.distanceKm;
+      costMatrix = dur.map((row, i) =>
+        row.map((d, j) => {
+          const durVal = d >= 0 ? d : 99999;
+          const distVal = dist[i]?.[j] >= 0 ? dist[i][j] : 99999;
+          return 0.6 * durVal + 0.4 * distVal;
+        })
+      );
+    }
+
+    const tspResult = solveTSP({
+      nodes: sortedLocations.map((l) => ({ id: l.id, lat: l.lat, lng: l.lng })),
+      distanceMatrix: costMatrix,
+    });
+
+    orderedLocations = tspResult.route.map((i) => sortedLocations[i]);
+  }
+
+  // 日別タイムテーブル生成
+  const startDate = project.durationMode === 'fixed' ? (project.startDate ?? null) : null;
+  const fitterResult = fitToWorkHours({
+    orderedLocations,
+    project,
+    meals,
+    travelDurationMatrix: distanceMatrix?.durationMin ?? null,
+    travelDistanceMatrix: distanceMatrix?.distanceKm ?? null,
+    scheduleId,
+    startDate,
+  });
+
+  return {
+    projectId: project.id,
+    generatedAt: new Date(),
+    totalDays: fitterResult.totalDays,
+    notes: null,
+    optimizationType,
+    totalDistanceKm: fitterResult.totalDistanceKm,
+    totalDurationMin: fitterResult.totalDurationMin,
+    hasOvertimeWarning: fitterResult.hasOvertimeWarning,
+    calculatedDays: fitterResult.calculatedDays,
+    items: fitterResult.items.map((item) => ({ ...item, scheduleId })),
+    excludedLocations: fitterResult.excludedLocations,
+  };
 }
