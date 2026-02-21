@@ -5,7 +5,7 @@ import { eq, desc } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
-export const runtime = 'edge';
+
 
 const createProjectSchema = z.object({
   title: z.string().min(1),

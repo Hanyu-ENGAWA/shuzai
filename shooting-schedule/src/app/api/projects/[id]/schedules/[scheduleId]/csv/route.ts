@@ -5,7 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { generateCsv } from '@/lib/optimizer/csv-generator';
 import type { Schedule, ExcludedLocation } from '@/types';
 
-export const runtime = 'edge';
+
 
 type Params = { params: Promise<{ id: string; scheduleId: string }> };
 

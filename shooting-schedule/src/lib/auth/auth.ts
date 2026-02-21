@@ -1,10 +1,9 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcryptjs from 'bcryptjs';
-import { createDb } from '@/lib/db';
 import { schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
-import { getRequestContext } from '@cloudflare/next-on-pages';
+import { getDbOnly } from '@/lib/api-helpers';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -20,8 +19,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         try {
-          const ctx = getRequestContext();
-          const db = createDb(ctx.env.DB);
+          const db = await getDbOnly();
           const user = await db.query.users.findFirst({
             where: eq(schema.users.email, credentials.email as string),
           });
