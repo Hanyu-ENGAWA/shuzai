@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { buildSchedule } from '@/lib/optimizer/schedule-builder';
 import type { OptimizeInput } from '@/types';
 
-export const runtime = 'edge';
+
 
 type Params = { params: Promise<{ id: string }> };
 

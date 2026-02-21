@@ -4,7 +4,7 @@ import { schema } from '@/lib/db';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 
-export const runtime = 'edge';
+
 
 const updateProjectSchema = z.object({
   title: z.string().min(1).optional(),
