@@ -142,39 +142,46 @@ export async function POST(req: NextRequest, { params }: Params) {
     distanceMatrix: distanceMatrix ?? undefined,
   };
 
-  const scheduleData = buildScheduleV2(input);
+  let scheduleData: ReturnType<typeof buildScheduleV2>;
+  try {
+    scheduleData = buildScheduleV2(input);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[optimize] buildScheduleV2 error:', msg);
+    return err(`スケジュール生成エラー: ${msg}`, 500);
+  }
 
   // DB保存
-  const scheduleId = uuidv4();
-  const now = new Date();
+  try {
+    const scheduleId = uuidv4();
+    const now = new Date();
 
-  // バージョン番号: 既存スケジュール数 + 1
-  const [{ value: existingCount }] = await db
-    .select({ value: count() })
-    .from(schema.schedules)
-    .where(eq(schema.schedules.projectId, id));
-  const version = (existingCount ?? 0) + 1;
+    // バージョン番号: 既存スケジュール数 + 1
+    const [{ value: existingCount }] = await db
+      .select({ value: count() })
+      .from(schema.schedules)
+      .where(eq(schema.schedules.projectId, id));
+    const version = (existingCount ?? 0) + 1;
 
-  const [savedSchedule] = await db.insert(schema.schedules).values({
-    id: scheduleId,
-    projectId: id,
-    version,
-    scheduleMode: project.durationMode ?? 'fixed',
-    generatedAt: scheduleData.generatedAt,
-    totalDays: scheduleData.totalDays,
-    notes: scheduleData.notes,
-    optimizationType: scheduleData.optimizationType ?? null,
-    totalDistanceKm: scheduleData.totalDistanceKm,
-    totalDurationMin: scheduleData.totalDurationMin,
-    hasOvertimeWarning: scheduleData.hasOvertimeWarning,
-    calculatedDays: scheduleData.calculatedDays,
-    createdAt: now,
-  }).returning();
+    const [savedSchedule] = await db.insert(schema.schedules).values({
+      id: scheduleId,
+      projectId: id,
+      version,
+      scheduleMode: project.durationMode ?? 'fixed',
+      generatedAt: scheduleData.generatedAt,
+      totalDays: scheduleData.totalDays,
+      notes: scheduleData.notes,
+      optimizationType: scheduleData.optimizationType ?? null,
+      totalDistanceKm: scheduleData.totalDistanceKm,
+      totalDurationMin: scheduleData.totalDurationMin,
+      hasOvertimeWarning: scheduleData.hasOvertimeWarning,
+      calculatedDays: scheduleData.calculatedDays,
+      createdAt: now,
+    }).returning();
 
-  // アイテムを保存
-  if (scheduleData.items.length > 0) {
-    await db.insert(schema.scheduleItems).values(
-      scheduleData.items.map((item) => ({
+    // アイテムを保存（D1のバインドパラメータ上限対策: 1アイテム22カラム→4件ずつ=88パラメータ）
+    if (scheduleData.items.length > 0) {
+      const itemRows = scheduleData.items.map((item) => ({
         id: item.id,
         scheduleId,
         day: item.day,
@@ -197,29 +204,45 @@ export async function POST(req: NextRequest, { params }: Params) {
         isOutsideWorkHours: item.isOutsideWorkHours ?? false,
         isAutoInserted: item.isAutoInserted ?? false,
         timeSlot: item.timeSlot ?? null,
-      }))
-    );
+      }));
+      // D1制限: 最大100バインドパラメータ / 22カラム = 4件/バッチ
+      const BATCH_SIZE = 4;
+      for (let i = 0; i < itemRows.length; i += BATCH_SIZE) {
+        const batch = itemRows.slice(i, i + BATCH_SIZE);
+        await db.insert(schema.scheduleItems).values(batch);
+      }
+    }
+
+    // 除外撮影地を保存（locationIdが実際のlocationsに存在する場合のみ）
+    if (scheduleData.excludedLocations.length > 0) {
+      const locationIds = new Set(locations.map((l) => l.id));
+      const validExcluded = scheduleData.excludedLocations.filter(
+        (ex) => locationIds.has(ex.locationId)
+      );
+      if (validExcluded.length > 0) {
+        await db.insert(schema.excludedLocations).values(
+          validExcluded.map((ex) => ({
+            id: uuidv4(),
+            scheduleId,
+            locationId: ex.locationId,
+            date: '',  // NOT NULL制約対応（nullable移行前の暫定措置）
+            reason: ex.reason ?? null,
+            priority: ex.priority ?? null,
+          }))
+        );
+      }
+    }
+
+    const result = {
+      ...savedSchedule,
+      items: scheduleData.items.map((item) => ({ ...item, scheduleId })),
+      excludedLocations: scheduleData.excludedLocations,
+    };
+
+    return ok(result, 201);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[optimize] DB save error:', msg);
+    return err(`DB保存エラー: ${msg}`, 500);
   }
-
-  // 除外撮影地を保存
-  if (scheduleData.excludedLocations.length > 0) {
-    await db.insert(schema.excludedLocations).values(
-      scheduleData.excludedLocations.map((ex) => ({
-        id: uuidv4(),
-        scheduleId,
-        locationId: ex.locationId,
-        date: null,
-        reason: ex.reason ?? null,
-        priority: ex.priority ?? null,
-      }))
-    );
-  }
-
-  const result = {
-    ...savedSchedule,
-    items: scheduleData.items.map((item) => ({ ...item, scheduleId })),
-    excludedLocations: scheduleData.excludedLocations,
-  };
-
-  return ok(result, 201);
 }
