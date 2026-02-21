@@ -9,7 +9,5 @@ database_name = "shooting-schedule-db"
 database_id = "d635c4ca-4cf0-4726-bb30-7ee1a1589839"
 migrations_dir = "drizzle"
 
-[vars]
-NEXTAUTH_URL = "https://shooting-schedule.pages.dev"
-
 # account_id は .env.local の CLOUDFLARE_ACCOUNT_ID (ae16a54b8562f1dd70f2dc9a6c8fb4f3) を参照
+# NEXTAUTH_URL / AUTH_SECRET / Google Maps API キーは Cloudflare Pages のシークレットで管理

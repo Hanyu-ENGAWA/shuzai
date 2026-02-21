@@ -113,7 +113,7 @@ export function buildSchedule(input: OptimizeInput): Omit<Schedule, 'id' | 'crea
     const acc = accommodations[day - 1];
     if (acc && day < totalDays) {
       const checkInStart = minutesToHHmm(currentMin);
-      dayItemsWithMeal.push(makeItem(scheduleId, day, date, currentMin, 0, 'accommodation', acc.id, acc.name, acc.address, dayItemsWithMeal.length));
+      dayItemsWithMeal.push(makeItem(scheduleId, day, date, currentMin, 0, 'accommodation', acc.id, acc.name ?? '宿泊', acc.address, dayItemsWithMeal.length));
     }
 
     allItems.push(...dayItemsWithMeal);
