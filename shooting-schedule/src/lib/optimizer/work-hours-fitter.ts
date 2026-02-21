@@ -104,7 +104,7 @@ export function fitToWorkHours(input: FitterInput): FitterOutput {
         currentMin = Math.min(currentMin, slotStart);
       }
 
-      let locationStart = currentMin + (dayItems.length > 0 ? travelMin : (day === 1 && departureTravelMin ? travelMin : 0));
+      const locationStart = currentMin + (dayItems.length > 0 ? travelMin : (day === 1 && departureTravelMin ? travelMin : 0));
 
       const locDuration = calcLocationTotalMinutes(loc);
       const mealAddition = loc.hasMeal ? loc.mealDurationMin : 0;

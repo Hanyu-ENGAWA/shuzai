@@ -121,6 +121,8 @@ export function buildSchedule(input: OptimizeInput): Omit<Schedule, 'id' | 'crea
 
   return {
     projectId: project.id,
+    version: 1,
+    scheduleMode: project.durationMode ?? 'fixed',
     generatedAt: new Date(),
     totalDays,
     notes: null,
@@ -301,6 +303,8 @@ export function buildScheduleV2(input: OptimizeInput): Omit<Schedule, 'id' | 'cr
 
   return {
     projectId: project.id,
+    version: 1,
+    scheduleMode: project.durationMode ?? 'fixed',
     generatedAt: new Date(),
     totalDays: fitterResult.totalDays,
     notes: null,

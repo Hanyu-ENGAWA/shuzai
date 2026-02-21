@@ -7,6 +7,7 @@ pages_build_output_dir = ".vercel/output/static"
 binding = "DB"
 database_name = "shooting-schedule-db"
 database_id = "d635c4ca-4cf0-4726-bb30-7ee1a1589839"
+migrations_dir = "drizzle"
 
 [vars]
 NEXTAUTH_URL = "https://shooting-schedule.pages.dev"
