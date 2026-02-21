@@ -47,13 +47,20 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const scheduleData = buildSchedule(input);
 
-  // DB保存
+  // バージョン番号: 既存スケジュール数 + 1
+  const existingSchedules = await db.query.schedules.findMany({
+    where: eq(schema.schedules.projectId, id),
+  });
+  const nextVersion = existingSchedules.length + 1;
+
   const scheduleId = uuidv4();
   const now = new Date();
 
   const [savedSchedule] = await db.insert(schema.schedules).values({
     id: scheduleId,
     projectId: id,
+    version: nextVersion,
+    scheduleMode: scheduleData.scheduleMode,
     generatedAt: scheduleData.generatedAt,
     totalDays: scheduleData.totalDays,
     notes: scheduleData.notes,
@@ -73,6 +80,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const result = {
     ...savedSchedule,
     items: scheduleData.items.map((item) => ({ ...item, scheduleId })),
+    excludedLocations: [],
   };
 
   return ok(result, 201);

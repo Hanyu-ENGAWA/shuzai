@@ -24,13 +24,15 @@ export const projects = sqliteTable('projects', {
   startDate: text('start_date'), // YYYY-MM-DD
   endDate: text('end_date'),     // YYYY-MM-DD
   // 稼働時間設定
-  workStartTime: text('work_start_time').notNull().default('08:00'), // HH:mm
-  workEndTime: text('work_end_time').notNull().default('19:00'),
+  workStartTime: text('work_start_time').notNull().default('09:00'), // HH:mm
+  workEndTime: text('work_end_time').notNull().default('18:00'),
   // 早朝/夜間撮影対応
   allowEarlyMorning: integer('allow_early_morning', { mode: 'boolean' }).notNull().default(false),
   earlyMorningStart: text('early_morning_start').default('05:00'),
   allowNightShooting: integer('allow_night_shooting', { mode: 'boolean' }).notNull().default(false),
   nightShootingEnd: text('night_shooting_end').default('22:00'),
+  // 移動手段（現地まで）
+  transportModeToLocation: text('transport_mode_to_location').default('car'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
@@ -45,10 +47,20 @@ export const locations = sqliteTable('locations', {
   lat: real('lat'),
   lng: real('lng'),
   shootingDuration: integer('shooting_duration').notNull().default(60), // 分
-  bufferBefore: integer('buffer_before').notNull().default(0),   // 分
-  bufferAfter: integer('buffer_after').notNull().default(0),    // 分
+  bufferBefore: integer('buffer_before').notNull().default(10),   // 分 (0→10)
+  bufferAfter: integer('buffer_after').notNull().default(10),    // 分 (0→10)
   hasMeal: integer('has_meal', { mode: 'boolean' }).notNull().default(false),
   mealType: text('meal_type', { enum: ['breakfast', 'lunch', 'dinner'] }),
+  mealDuration: integer('meal_duration').notNull().default(60), // 食事時間（分）
+  // 撮影時間帯
+  timeSlot: text('time_slot', { enum: ['normal', 'early_morning', 'night', 'flexible'] }).notNull().default('normal'),
+  timeSlotStart: text('time_slot_start'), // HH:mm
+  timeSlotEnd: text('time_slot_end'),     // HH:mm
+  // 希望時間
+  preferredTimeStart: text('preferred_time_start'), // HH:mm
+  preferredTimeEnd: text('preferred_time_end'),     // HH:mm
+  // 優先度
+  priority: text('priority', { enum: ['required', 'high', 'medium', 'low'] }).notNull().default('medium'),
   notes: text('notes'),
   order: integer('order').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
@@ -59,7 +71,7 @@ export const locations = sqliteTable('locations', {
 export const accommodations = sqliteTable('accommodations', {
   id: text('id').primaryKey(),
   projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
+  name: text('name'), // nullable（空欄時は自動提案）
   address: text('address'),
   placeId: text('place_id'),
   lat: real('lat'),
@@ -77,7 +89,7 @@ export const accommodations = sqliteTable('accommodations', {
 export const meals = sqliteTable('meals', {
   id: text('id').primaryKey(),
   projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
+  name: text('name'), // nullable（店舗未指定可）
   address: text('address'),
   placeId: text('place_id'),
   lat: real('lat'),
@@ -121,6 +133,8 @@ export const transports = sqliteTable('transports', {
 export const schedules = sqliteTable('schedules', {
   id: text('id').primaryKey(),
   projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  version: integer('version').notNull().default(1),
+  scheduleMode: text('schedule_mode', { enum: ['fixed', 'auto'] }).notNull().default('fixed'),
   generatedAt: integer('generated_at', { mode: 'timestamp' }).notNull(),
   totalDays: integer('total_days').notNull(),
   notes: text('notes'),
@@ -136,9 +150,11 @@ export const scheduleItems = sqliteTable('schedule_items', {
   startTime: text('start_time').notNull(), // HH:mm
   endTime: text('end_time').notNull(),     // HH:mm
   type: text('type', {
-    enum: ['location', 'accommodation', 'meal', 'rest_stop', 'transport', 'buffer']
+    // 仕様書統一: shooting / accommodation / meal / rest / transport / buffer / auto_meal
+    enum: ['shooting', 'accommodation', 'meal', 'rest', 'transport', 'buffer', 'auto_meal']
   }).notNull(),
-  refId: text('ref_id'),   // 参照元ID (locations.id, meals.id など)
+  timeSlot: text('time_slot', { enum: ['normal', 'early_morning', 'night', 'flexible'] }).default('normal'),
+  refId: text('ref_id'),   // 参照元ID
   name: text('name').notNull(),
   address: text('address'),
   notes: text('notes'),
@@ -151,6 +167,8 @@ export const excludedLocations = sqliteTable('excluded_locations', {
   scheduleId: text('schedule_id').notNull().references(() => schedules.id, { onDelete: 'cascade' }),
   locationId: text('location_id').notNull().references(() => locations.id, { onDelete: 'cascade' }),
   date: text('date').notNull(), // YYYY-MM-DD
+  reason: text('reason'), // time_exceeded / low_priority / unreachable
+  priority: text('priority'),
 });
 
 // リレーション定義
@@ -192,4 +210,9 @@ export const schedulesRelations = relations(schedules, ({ one, many }) => ({
 
 export const scheduleItemsRelations = relations(scheduleItems, ({ one }) => ({
   schedule: one(schedules, { fields: [scheduleItems.scheduleId], references: [schedules.id] }),
+}));
+
+export const excludedLocationsRelations = relations(excludedLocations, ({ one }) => ({
+  schedule: one(schedules, { fields: [excludedLocations.scheduleId], references: [schedules.id] }),
+  location: one(locations, { fields: [excludedLocations.locationId], references: [locations.id] }),
 }));

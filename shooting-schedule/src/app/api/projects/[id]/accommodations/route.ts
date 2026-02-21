@@ -10,7 +10,7 @@ export const runtime = 'edge';
 type Params = { params: Promise<{ id: string }> };
 
 const accommodationSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().optional(),  // nullable（空欄時は自動提案）
   address: z.string().optional(),
   placeId: z.string().optional(),
   lat: z.number().optional(),

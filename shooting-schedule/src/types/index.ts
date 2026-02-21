@@ -17,12 +17,15 @@ export interface Project {
   earlyMorningStart?: string | null;
   allowNightShooting: boolean;
   nightShootingEnd?: string | null;
+  transportModeToLocation?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 // 撮影地
 export type MealType = 'breakfast' | 'lunch' | 'dinner';
+export type TimeSlot = 'normal' | 'early_morning' | 'night' | 'flexible';
+export type LocationPriority = 'required' | 'high' | 'medium' | 'low';
 
 export interface Location {
   id: string;
@@ -37,6 +40,13 @@ export interface Location {
   bufferAfter: number;
   hasMeal: boolean;
   mealType?: MealType | null;
+  mealDuration: number;
+  timeSlot: TimeSlot;
+  timeSlotStart?: string | null;
+  timeSlotEnd?: string | null;
+  preferredTimeStart?: string | null;
+  preferredTimeEnd?: string | null;
+  priority: LocationPriority;
   notes?: string | null;
   order: number;
   createdAt: Date;
@@ -47,7 +57,7 @@ export interface Location {
 export interface Accommodation {
   id: string;
   projectId: string;
-  name: string;
+  name?: string | null;  // nullable（空欄時は自動提案）
   address?: string | null;
   placeId?: string | null;
   lat?: number | null;
@@ -65,7 +75,7 @@ export interface Accommodation {
 export interface Meal {
   id: string;
   projectId: string;
-  name: string;
+  name?: string | null;  // nullable（店舗未指定可）
   address?: string | null;
   placeId?: string | null;
   lat?: number | null;
@@ -108,7 +118,15 @@ export interface Transport {
 }
 
 // 工程表
-export type ScheduleItemType = 'location' | 'accommodation' | 'meal' | 'rest_stop' | 'transport' | 'buffer';
+// 仕様書統一: shooting / accommodation / meal / rest / transport / buffer / auto_meal
+export type ScheduleItemType =
+  | 'shooting'
+  | 'accommodation'
+  | 'meal'
+  | 'rest'
+  | 'transport'
+  | 'buffer'
+  | 'auto_meal';
 
 export interface ScheduleItem {
   id: string;
@@ -118,6 +136,7 @@ export interface ScheduleItem {
   startTime: string;
   endTime: string;
   type: ScheduleItemType;
+  timeSlot?: TimeSlot | null;
   refId?: string | null;
   name: string;
   address?: string | null;
@@ -128,11 +147,24 @@ export interface ScheduleItem {
 export interface Schedule {
   id: string;
   projectId: string;
+  version: number;
+  scheduleMode: DurationMode;
   generatedAt: Date;
   totalDays: number;
   notes?: string | null;
   createdAt: Date;
   items: ScheduleItem[];
+  excludedLocations?: ExcludedLocation[];
+}
+
+// 除外撮影地
+export interface ExcludedLocation {
+  id: string;
+  scheduleId: string;
+  locationId: string;
+  date: string;
+  reason?: string | null;
+  priority?: string | null;
 }
 
 // 最適化入力
