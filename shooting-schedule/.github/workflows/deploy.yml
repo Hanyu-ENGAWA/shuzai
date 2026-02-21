@@ -3,12 +3,8 @@ name: Deploy to Cloudflare Pages
 on:
   push:
     branches:
-      - main
       - master
-  pull_request:
-    branches:
-      - main
-      - master
+      - develop
 
 jobs:
   deploy:
@@ -26,11 +22,14 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: shooting-schedule/package-lock.json
 
       - name: Install dependencies
+        working-directory: shooting-schedule
         run: npm ci
 
       - name: Build
+        working-directory: shooting-schedule
         run: npm run pages:build
         env:
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
@@ -39,9 +38,22 @@ jobs:
           GOOGLE_MAPS_SERVER_API_KEY: ${{ secrets.GOOGLE_MAPS_SERVER_API_KEY }}
           NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
 
-      - name: Deploy to Cloudflare Pages
+      # master ブランチ → 本番環境（production）
+      - name: Deploy to Production (master)
+        if: github.ref == 'refs/heads/master'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: shooting-schedule
           command: pages deploy .vercel/output/static --project-name=shooting-schedule
+
+      # develop ブランチ → プレビュー環境（develop）
+      - name: Deploy to Preview (develop)
+        if: github.ref == 'refs/heads/develop'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: shooting-schedule
+          command: pages deploy .vercel/output/static --project-name=shooting-schedule --branch=develop
