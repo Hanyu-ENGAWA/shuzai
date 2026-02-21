@@ -3,7 +3,7 @@ import { ok, err, getAuthAndDb } from '@/lib/api-helpers';
 import { schema } from '@/lib/db';
 import { eq, and, desc } from 'drizzle-orm';
 
-export const runtime = 'edge';
+
 
 type Params = { params: Promise<{ id: string }> };
 

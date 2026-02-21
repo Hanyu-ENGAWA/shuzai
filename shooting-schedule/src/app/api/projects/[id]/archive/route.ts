@@ -3,7 +3,7 @@ import { ok, err, getAuthAndDb } from '@/lib/api-helpers';
 import { schema } from '@/lib/db';
 import { eq, and } from 'drizzle-orm';
 
-export const runtime = 'edge';
+
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -18,7 +18,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   });
   if (!project) return err('Not found', 404);
 
-  const newStatus = project.status === 'archived' ? 'active' : 'archived';
+  const newStatus = project.status === 'archived' ? 'draft' : 'archived';
   const [updated] = await db.update(schema.projects)
     .set({ status: newStatus, updatedAt: new Date() })
     .where(eq(schema.projects.id, id))

@@ -5,12 +5,12 @@ import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
-export const runtime = 'edge';
+
 
 type Params = { params: Promise<{ id: string }> };
 
 const accommodationSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().optional(),
   address: z.string().optional(),
   placeId: z.string().optional(),
   lat: z.number().optional(),
@@ -19,6 +19,8 @@ const accommodationSchema = z.object({
   checkOutDate: z.string().optional(),
   checkInTime: z.string().default('15:00'),
   checkOutTime: z.string().default('10:00'),
+  nights: z.number().int().min(1).optional(),
+  budgetPerNight: z.number().int().min(0).optional(),
   notes: z.string().optional(),
 });
 

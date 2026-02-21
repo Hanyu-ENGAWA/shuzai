@@ -2,6 +2,8 @@ import type { OptimizeInput, ScheduleItem, Schedule } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { hhmmToMinutes, minutesToHHmm, calcLocationTotalMinutes, calcEndTime } from './buffer-calculator';
 import { insertAutoMeal } from './auto-meal-inserter';
+import { solveTSP } from './tsp-solver';
+import { fitToWorkHours } from './work-hours-fitter';
 
 const DEFAULT_TRAVEL_BUFFER = 10; // 分
 
@@ -88,7 +90,7 @@ export function buildSchedule(input: OptimizeInput): Omit<Schedule, 'id' | 'crea
       }
 
       // 撮影
-      dayItems.push(makeItem(scheduleId, day, date, currentMin, loc.shootingDuration, 'location', loc.id, loc.name, loc.address, dayItems.length));
+      dayItems.push(makeItem(scheduleId, day, date, currentMin, loc.shootingDuration, 'shooting', loc.id, loc.name, loc.address, dayItems.length));
       currentMin += loc.shootingDuration;
 
       // バッファ後
@@ -111,7 +113,7 @@ export function buildSchedule(input: OptimizeInput): Omit<Schedule, 'id' | 'crea
     const acc = accommodations[day - 1];
     if (acc && day < totalDays) {
       const checkInStart = minutesToHHmm(currentMin);
-      dayItemsWithMeal.push(makeItem(scheduleId, day, date, currentMin, 0, 'accommodation', acc.id, acc.name, acc.address, dayItemsWithMeal.length));
+      dayItemsWithMeal.push(makeItem(scheduleId, day, date, currentMin, 0, 'accommodation', acc.id, acc.name ?? '宿泊', acc.address, dayItemsWithMeal.length));
     }
 
     allItems.push(...dayItemsWithMeal);
@@ -119,6 +121,8 @@ export function buildSchedule(input: OptimizeInput): Omit<Schedule, 'id' | 'crea
 
   return {
     projectId: project.id,
+    version: 1,
+    scheduleMode: project.durationMode ?? 'fixed',
     generatedAt: new Date(),
     totalDays,
     notes: null,
@@ -156,8 +160,160 @@ function makeItem(
   };
 }
 
+// Haversine 距離計算（km）
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Haversine から移動時間（分）を概算（時速50km）
+function haversineMin(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  return Math.round((haversineKm(lat1, lng1, lat2, lng2) / 50) * 60);
+}
+
 function getDateString(baseDate: string, offsetDays: number): string {
   const d = new Date(baseDate);
   d.setDate(d.getDate() + offsetDays);
   return d.toISOString().split('T')[0];
+}
+
+/**
+ * Phase 2 スケジュールビルダー
+ * - optimizationType に基づき TSP → fitToWorkHours を実行
+ */
+export function buildScheduleV2(input: OptimizeInput): Omit<Schedule, 'id' | 'createdAt'> & {
+  excludedLocations: import('@/types').ExcludedLocation[];
+  totalDistanceKm: number;
+  totalDurationMin: number;
+  hasOvertimeWarning: boolean;
+  calculatedDays: number;
+} {
+  const { project, locations, meals, transports, distanceMatrix, optimizationType = 'none' } = input;
+
+  const sortedLocations = [...locations].sort((a, b) => a.order - b.order);
+  const scheduleId = uuidv4();
+
+  let orderedLocations = sortedLocations;
+  let departureTravelMin: number | undefined;
+  let departureTravelKm: number | undefined;
+
+  // TSP で順序を決定
+  if (optimizationType !== 'none' && distanceMatrix && sortedLocations.length > 1) {
+    const hasDeparture = project.departureLat != null && project.departureLng != null;
+    let costMatrix: number[][];
+
+    if (optimizationType === 'shortest_time') {
+      costMatrix = distanceMatrix.durationMin;
+    } else if (optimizationType === 'shortest_distance') {
+      costMatrix = distanceMatrix.distanceKm;
+    } else {
+      // balanced: 0.6 × 移動時間 + 0.4 × 移動距離（正規化なしの混合）
+      const dur = distanceMatrix.durationMin;
+      const dist = distanceMatrix.distanceKm;
+      costMatrix = dur.map((row, i) =>
+        row.map((d, j) => {
+          const durVal = d >= 0 ? d : 99999;
+          const distVal = dist[i]?.[j] >= 0 ? dist[i][j] : 99999;
+          return 0.6 * durVal + 0.4 * distVal;
+        })
+      );
+    }
+
+    let tspNodes = sortedLocations.map((l) => ({ id: l.id, lat: l.lat, lng: l.lng }));
+    let tspMatrix = costMatrix;
+    let fixedStartIndex: number | undefined;
+
+    // 出発地を TSP のノード 0 として追加（固定開始ノード）
+    if (hasDeparture) {
+      const depLat = project.departureLat!;
+      const depLng = project.departureLng!;
+      const n = sortedLocations.length;
+
+      // 出発地 → 各地点 / 各地点 → 出発地 のコストを Haversine で計算
+      const depRow = sortedLocations.map((l) => {
+        if (l.lat == null || l.lng == null) return 99999;
+        return haversineMin(depLat, depLng, l.lat, l.lng);
+      });
+      // 出発地は終点にならないので大きなコストを設定（非対称 TSP の擬似対応）
+      const depCol = Array(n).fill(0);
+
+      // 拡張コスト行列: node 0 = 出発地, node 1..n = 撮影地
+      const augSize = n + 1;
+      const augMatrix: number[][] = Array.from({ length: augSize }, () => Array(augSize).fill(99999));
+      // 出発地 → 撮影地
+      for (let j = 0; j < n; j++) augMatrix[0][j + 1] = depRow[j];
+      // 撮影地 → 撮影地
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          augMatrix[i + 1][j + 1] = costMatrix[i][j] >= 0 ? costMatrix[i][j] : 99999;
+        }
+      }
+      // 撮影地 → 出発地（大きなコスト: 出発地を終点にしない）
+      for (let i = 0; i < n; i++) augMatrix[i + 1][0] = 99999;
+
+      tspNodes = [
+        { id: '_departure', lat: depLat, lng: depLng },
+        ...tspNodes,
+      ];
+      tspMatrix = augMatrix;
+      fixedStartIndex = 0;
+    }
+
+    const tspResult = solveTSP({
+      nodes: tspNodes,
+      distanceMatrix: tspMatrix,
+      fixedStartIndex,
+    });
+
+    if (hasDeparture) {
+      // route[0] = 出発地ノード（除外）, route[1..] = 撮影地インデックス（1始まり → -1 で 0始まりに）
+      const locationRoute = tspResult.route.slice(1).map((i) => sortedLocations[i - 1]);
+      orderedLocations = locationRoute;
+      // 出発地 → 最初の撮影地 の移動時間を Haversine から推定（Day1 表示用）
+      if (orderedLocations.length > 0) {
+        const first = orderedLocations[0];
+        if (first.lat != null && first.lng != null) {
+          const km = haversineKm(project.departureLat!, project.departureLng!, first.lat, first.lng);
+          departureTravelKm = km;
+          departureTravelMin = Math.round((km / 50) * 60); // 時速50kmで概算
+        }
+      }
+    } else {
+      orderedLocations = tspResult.route.map((i) => sortedLocations[i]);
+    }
+  }
+
+  // 日別タイムテーブル生成
+  const startDate = project.durationMode === 'fixed' ? (project.startDate ?? null) : null;
+  const fitterResult = fitToWorkHours({
+    orderedLocations,
+    project,
+    meals,
+    travelDurationMatrix: distanceMatrix?.durationMin ?? null,
+    travelDistanceMatrix: distanceMatrix?.distanceKm ?? null,
+    scheduleId,
+    startDate,
+    departureTravelMin,
+    departureTravelKm,
+  });
+
+  return {
+    projectId: project.id,
+    version: 1,
+    scheduleMode: project.durationMode ?? 'fixed',
+    generatedAt: new Date(),
+    totalDays: fitterResult.totalDays,
+    notes: null,
+    optimizationType,
+    totalDistanceKm: fitterResult.totalDistanceKm,
+    totalDurationMin: fitterResult.totalDurationMin,
+    hasOvertimeWarning: fitterResult.hasOvertimeWarning,
+    calculatedDays: fitterResult.calculatedDays,
+    items: fitterResult.items.map((item) => ({ ...item, scheduleId })),
+    excludedLocations: fitterResult.excludedLocations,
+  };
 }

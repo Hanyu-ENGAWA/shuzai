@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,6 +21,13 @@ const schema = z.object({
   bufferAfter: z.coerce.number().int().min(0),
   hasMeal: z.boolean().default(false),
   mealType: z.enum(['breakfast', 'lunch', 'dinner']).optional(),
+  mealDurationMin: z.coerce.number().int().min(0).default(60),
+  priority: z.enum(['required', 'high', 'medium', 'low']).default('medium'),
+  timeSlot: z.enum(['normal', 'early_morning', 'night', 'flexible']).default('normal'),
+  timeSlotStart: z.string().optional(),
+  timeSlotEnd: z.string().optional(),
+  preferredTimeStart: z.string().optional(),
+  preferredTimeEnd: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -33,19 +39,34 @@ interface Props {
 }
 
 const MEAL_LABELS = { breakfast: '朝食', lunch: '昼食', dinner: '夕食' };
+const PRIORITY_LABELS = { required: '必須', high: '高', medium: '中', low: '低' };
+const TIME_SLOT_LABELS = { normal: '通常', early_morning: '早朝', night: '夜間', flexible: 'フレキシブル' };
 
 export function LocationForm({ onSubmit, isLoading }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
+      name: '',
+      address: '',
+      placeId: '',
       shootingDuration: 60,
-      bufferBefore: 0,
-      bufferAfter: 0,
+      bufferBefore: 10,
+      bufferAfter: 10,
       hasMeal: false,
+      mealDurationMin: 60,
+      priority: 'medium',
+      timeSlot: 'normal',
+      timeSlotStart: '',
+      timeSlotEnd: '',
+      preferredTimeStart: '',
+      preferredTimeEnd: '',
+      notes: '',
     },
   });
 
   const hasMeal = form.watch('hasMeal');
+  const timeSlot = form.watch('timeSlot');
+  const showTimeRange = timeSlot === 'early_morning' || timeSlot === 'night';
 
   const handlePlaceSelect = (details: { name: string; address: string; lat: number; lng: number; placeId: string }) => {
     form.setValue('name', details.name);
@@ -81,11 +102,66 @@ export function LocationForm({ onSubmit, isLoading }: Props) {
           </FormItem>
         )} />
 
+        <div className="grid grid-cols-2 gap-3">
+          <FormField control={form.control} name="priority" render={({ field }) => (
+            <FormItem>
+              <FormLabel>優先度</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {Object.entries(PRIORITY_LABELS).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          <FormField control={form.control} name="timeSlot" render={({ field }) => (
+            <FormItem>
+              <FormLabel>撮影時間帯</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {Object.entries(TIME_SLOT_LABELS).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
+
+        {showTimeRange && (
+          <div className="grid grid-cols-2 gap-3">
+            <FormField control={form.control} name="timeSlotStart" render={({ field }) => (
+              <FormItem>
+                <FormLabel>開始時刻</FormLabel>
+                <FormControl><Input type="time" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="timeSlotEnd" render={({ field }) => (
+              <FormItem>
+                <FormLabel>終了時刻</FormLabel>
+                <FormControl><Input type="time" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
+        )}
+
         <div className="grid grid-cols-3 gap-3">
           <FormField control={form.control} name="bufferBefore" render={({ field }) => (
             <FormItem>
-              <FormLabel>前バッファ（分）</FormLabel>
-              <FormControl><Input type="number" min={0} {...field} /></FormControl>
+              <FormLabel>到着後バッファ（分）</FormLabel>
+              <FormControl><Input type="number" min={0} max={60} step={5} {...field} /></FormControl>
               <FormDescription className="text-xs">準備時間</FormDescription>
               <FormMessage />
             </FormItem>
@@ -99,8 +175,8 @@ export function LocationForm({ onSubmit, isLoading }: Props) {
           )} />
           <FormField control={form.control} name="bufferAfter" render={({ field }) => (
             <FormItem>
-              <FormLabel>後バッファ（分）</FormLabel>
-              <FormControl><Input type="number" min={0} {...field} /></FormControl>
+              <FormLabel>撤収バッファ（分）</FormLabel>
+              <FormControl><Input type="number" min={0} max={60} step={5} {...field} /></FormControl>
               <FormDescription className="text-xs">片付け時間</FormDescription>
               <FormMessage />
             </FormItem>
@@ -117,23 +193,49 @@ export function LocationForm({ onSubmit, isLoading }: Props) {
         )} />
 
         {hasMeal && (
-          <FormField control={form.control} name="mealType" render={({ field }) => (
+          <div className="grid grid-cols-2 gap-3">
+            <FormField control={form.control} name="mealType" render={({ field }) => (
+              <FormItem>
+                <FormLabel>食事の種類</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue placeholder="選択" /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {Object.entries(MEAL_LABELS).map(([v, l]) => (
+                      <SelectItem key={v} value={v}>{l}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="mealDurationMin" render={({ field }) => (
+              <FormItem>
+                <FormLabel>食事時間（分）</FormLabel>
+                <FormControl><Input type="number" min={0} step={5} {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <FormField control={form.control} name="preferredTimeStart" render={({ field }) => (
             <FormItem>
-              <FormLabel>食事の種類</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger><SelectValue placeholder="選択" /></SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {Object.entries(MEAL_LABELS).map(([v, l]) => (
-                    <SelectItem key={v} value={v}>{l}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormLabel>希望撮影開始時間</FormLabel>
+              <FormControl><Input type="time" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
-        )}
+          <FormField control={form.control} name="preferredTimeEnd" render={({ field }) => (
+            <FormItem>
+              <FormLabel>希望撮影終了時間</FormLabel>
+              <FormControl><Input type="time" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
 
         <FormField control={form.control} name="notes" render={({ field }) => (
           <FormItem>

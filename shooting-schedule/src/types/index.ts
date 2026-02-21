@@ -1,6 +1,7 @@
 // プロジェクト
 export type DurationMode = 'fixed' | 'auto';
-export type ProjectStatus = 'active' | 'archived';
+export type ProjectStatus = 'draft' | 'optimized' | 'archived';
+export type TransportMode = 'driving' | 'transit' | 'walking' | 'bicycling';
 
 export interface Project {
   id: string;
@@ -17,12 +18,28 @@ export interface Project {
   earlyMorningStart?: string | null;
   allowNightShooting: boolean;
   nightShootingEnd?: string | null;
+  // 出発地・解散場所
+  departureLocation?: string | null;
+  departureLat?: number | null;
+  departureLng?: number | null;
+  departurePlaceId?: string | null;
+  returnLocation?: string | null;
+  returnLat?: number | null;
+  returnLng?: number | null;
+  returnPlaceId?: string | null;
+  returnSameAsDeparture: boolean;
+  // 現地までの移動手段
+  transportModeToLocation: 'transit' | 'car' | 'other';
+  // 現地での移動手段
+  defaultTransportMode: TransportMode;
   createdAt: Date;
   updatedAt: Date;
 }
 
 // 撮影地
 export type MealType = 'breakfast' | 'lunch' | 'dinner';
+export type LocationPriority = 'required' | 'high' | 'medium' | 'low';
+export type TimeSlot = 'normal' | 'early_morning' | 'night' | 'flexible';
 
 export interface Location {
   id: string;
@@ -37,6 +54,13 @@ export interface Location {
   bufferAfter: number;
   hasMeal: boolean;
   mealType?: MealType | null;
+  mealDurationMin: number;
+  priority: LocationPriority;
+  timeSlot: TimeSlot;
+  timeSlotStart?: string | null;
+  timeSlotEnd?: string | null;
+  preferredTimeStart?: string | null;
+  preferredTimeEnd?: string | null;
   notes?: string | null;
   order: number;
   createdAt: Date;
@@ -56,6 +80,9 @@ export interface Accommodation {
   checkOutDate?: string | null;
   checkInTime?: string | null;
   checkOutTime?: string | null;
+  nights?: number | null;
+  budgetPerNight?: number | null;
+  isAutoSuggested?: boolean;
   notes?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -95,12 +122,14 @@ export interface RestStop {
 }
 
 // 移動手段
-export type TransportType = 'car' | 'train' | 'bus' | 'walk' | 'other';
+export type TransportType = 'to_location' | 'local';
 
 export interface Transport {
   id: string;
   projectId: string;
-  type: TransportType;
+  transportType: TransportType;
+  mode: TransportMode;
+  description?: string | null;
   notes?: string | null;
   defaultTravelBuffer: number;
   createdAt: Date;
@@ -108,7 +137,8 @@ export interface Transport {
 }
 
 // 工程表
-export type ScheduleItemType = 'location' | 'accommodation' | 'meal' | 'rest_stop' | 'transport' | 'buffer';
+export type ScheduleItemType = 'shooting' | 'accommodation' | 'meal' | 'rest' | 'transport' | 'auto_meal' | 'buffer';
+export type OptimizationType = 'none' | 'shortest_time' | 'shortest_distance' | 'balanced';
 
 export interface ScheduleItem {
   id: string;
@@ -123,16 +153,51 @@ export interface ScheduleItem {
   address?: string | null;
   notes?: string | null;
   order: number;
+  // Phase 2: 移動メタデータ
+  travelFromPreviousMin?: number | null;
+  travelFromPreviousKm?: number | null;
+  transportMode?: string | null;
+  bufferBeforeMin?: number | null;
+  bufferAfterMin?: number | null;
+  includesMeal?: boolean;
+  mealDurationMin?: number | null;
+  isOutsideWorkHours?: boolean;
+  isAutoInserted?: boolean;
+  timeSlot?: string | null;
+}
+
+export interface ExcludedLocation {
+  locationId: string;
+  name: string;
+  address?: string | null;
+  reason?: string | null;
+  priority?: string | null;
 }
 
 export interface Schedule {
   id: string;
   projectId: string;
+  version: number;
+  scheduleMode: 'fixed' | 'auto';
   generatedAt: Date;
   totalDays: number;
   notes?: string | null;
+  optimizationType?: OptimizationType | null;
+  totalDistanceKm?: number | null;
+  totalDurationMin?: number | null;
+  hasOvertimeWarning?: boolean;
+  calculatedDays?: number | null;
   createdAt: Date;
   items: ScheduleItem[];
+  excludedLocations?: ExcludedLocation[];
+}
+
+// 座標を持つ地点（出発地・解散場所などに使用）
+export interface LatLngPoint {
+  name: string;
+  lat: number;
+  lng: number;
+  placeId?: string | null;
 }
 
 // 最適化入力
@@ -143,6 +208,45 @@ export interface OptimizeInput {
   meals: Meal[];
   restStops: RestStop[];
   transports: Transport[];
+  optimizationType?: OptimizationType;
+  distanceMatrix?: DistanceMatrix;
+}
+
+// Distance Matrix
+export interface DistanceMatrix {
+  durationMin: number[][];
+  distanceKm: number[][];
+}
+
+// ホテル提案
+export interface HotelSuggestion {
+  placeId: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  rating?: number;
+  distanceKm: number;
+}
+
+// TSP
+export interface TspNode {
+  id: string;
+  lat?: number | null;
+  lng?: number | null;
+  timeSlot?: string;
+}
+
+export interface TspInput {
+  nodes: TspNode[];
+  distanceMatrix: number[][];
+  maxIterations?: number;
+  fixedStartIndex?: number; // 出発地を固定開始ノードとして指定
+}
+
+export interface TspResult {
+  route: number[];
+  totalDurationMin: number;
 }
 
 // API レスポンス

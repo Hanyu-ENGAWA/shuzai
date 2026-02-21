@@ -22,7 +22,9 @@ export default function DashboardPage() {
     fetchProjects();
   }, [fetchProjects]);
 
-  const filtered = projects.filter((p) => p.status === tab);
+  const filtered = projects.filter((p) =>
+    tab === 'active' ? p.status !== 'archived' : p.status === 'archived'
+  );
 
   const handleDuplicate = async (project: Project) => {
     const result = await duplicateProject(project.id);
@@ -32,7 +34,7 @@ export default function DashboardPage() {
 
   const handleArchive = async (project: Project) => {
     await archiveProject(project.id);
-    toast.success(project.status === 'active' ? 'アーカイブしました' : 'アーカイブを解除しました');
+    toast.success(project.status !== 'archived' ? 'アーカイブしました' : 'アーカイブを解除しました');
   };
 
   const handleDelete = async (project: Project) => {
@@ -89,8 +91,8 @@ export default function DashboardPage() {
                         {project.title}
                       </Link>
                     </CardTitle>
-                    <Badge variant={project.status === 'active' ? 'default' : 'secondary'} className="shrink-0">
-                      {project.status === 'active' ? '進行中' : 'アーカイブ'}
+                    <Badge variant={project.status === 'archived' ? 'secondary' : project.status === 'optimized' ? 'outline' : 'default'} className="shrink-0">
+                      {project.status === 'draft' ? '下書き' : project.status === 'optimized' ? '最適化済' : 'アーカイブ'}
                     </Badge>
                   </div>
                   {project.description && (

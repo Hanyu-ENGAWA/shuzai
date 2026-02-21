@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PlaceAutocomplete } from '@/components/maps/PlaceAutocomplete';
 
 const schema = z.object({
-  name: z.string().min(1, '店名は必須です'),
+  name: z.string().optional(),
   address: z.string().optional(),
   placeId: z.string().optional(),
   lat: z.number().optional(),
@@ -32,7 +32,15 @@ interface Props {
 export function MealForm({ onSubmit, isLoading }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { mealType: 'lunch', duration: 60 },
+    defaultValues: {
+      name: '',
+      address: '',
+      mealType: 'lunch',
+      scheduledDate: '',
+      scheduledTime: '',
+      duration: 60,
+      notes: '',
+    },
   });
 
   return (
@@ -56,7 +64,7 @@ export function MealForm({ onSubmit, isLoading }: Props) {
 
         <FormField control={form.control} name="name" render={({ field }) => (
           <FormItem>
-            <FormLabel>店名 *</FormLabel>
+            <FormLabel>店名</FormLabel>
             <FormControl><Input {...field} placeholder="例: 〇〇レストラン" /></FormControl>
             <FormMessage />
           </FormItem>

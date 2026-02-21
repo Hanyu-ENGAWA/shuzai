@@ -1,12 +1,12 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcryptjs from 'bcryptjs';
-import { createDb } from '@/lib/db';
 import { schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
-import { getRequestContext } from '@cloudflare/next-on-pages';
+import { getDbOnly } from '@/lib/api-helpers';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true, // サンドボックス・プロキシ環境でホストを信頼
   providers: [
     Credentials({
       name: 'credentials',
@@ -20,8 +20,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         try {
-          const ctx = getRequestContext();
-          const db = createDb(ctx.env.DB);
+          const db = await getDbOnly();
           const user = await db.query.users.findFirst({
             where: eq(schema.users.email, credentials.email as string),
           });
@@ -50,6 +49,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: 'jwt' },
   pages: {
     signIn: '/login',
+  },
+  cookies: {
+    sessionToken: {
+      name: 'authjs.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: false, // ローカル開発でHTTP/HTTPSどちらでも動作
+      },
+    },
+    callbackUrl: {
+      name: 'authjs.callback-url',
+      options: {
+        sameSite: 'lax',
+        path: '/',
+        secure: false,
+      },
+    },
+    csrfToken: {
+      name: 'authjs.csrf-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: false,
+      },
+    },
   },
   callbacks: {
     jwt({ token, user }) {

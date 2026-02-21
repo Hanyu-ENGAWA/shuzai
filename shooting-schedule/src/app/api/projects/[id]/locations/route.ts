@@ -5,7 +5,7 @@ import { eq, and, asc } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
-export const runtime = 'edge';
+
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -16,10 +16,17 @@ const locationSchema = z.object({
   lat: z.number().optional(),
   lng: z.number().optional(),
   shootingDuration: z.number().int().min(1).default(60),
-  bufferBefore: z.number().int().min(0).default(0),
-  bufferAfter: z.number().int().min(0).default(0),
+  bufferBefore: z.number().int().min(0).default(10),
+  bufferAfter: z.number().int().min(0).default(10),
   hasMeal: z.boolean().default(false),
   mealType: z.enum(['breakfast', 'lunch', 'dinner']).optional(),
+  mealDurationMin: z.number().int().min(0).default(60),
+  priority: z.enum(['required', 'high', 'medium', 'low']).default('medium'),
+  timeSlot: z.enum(['normal', 'early_morning', 'night', 'flexible']).default('normal'),
+  timeSlotStart: z.string().optional(),
+  timeSlotEnd: z.string().optional(),
+  preferredTimeStart: z.string().optional(),
+  preferredTimeEnd: z.string().optional(),
   notes: z.string().optional(),
   order: z.number().int().default(0),
 });

@@ -5,12 +5,14 @@ import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
-export const runtime = 'edge';
+
 
 type Params = { params: Promise<{ id: string }> };
 
 const transportSchema = z.object({
-  type: z.enum(['car', 'train', 'bus', 'walk', 'other']).default('car'),
+  transportType: z.enum(['to_location', 'local']).default('local'),
+  mode: z.enum(['driving', 'transit', 'walking', 'bicycling']).default('driving'),
+  description: z.string().optional(),
   notes: z.string().optional(),
   defaultTravelBuffer: z.number().int().min(0).default(10),
 });

@@ -3,9 +3,9 @@ import { err, getAuthAndDb } from '@/lib/api-helpers';
 import { schema } from '@/lib/db';
 import { eq, and } from 'drizzle-orm';
 import { generateCsv } from '@/lib/optimizer/csv-generator';
-import type { Schedule } from '@/types';
+import type { Schedule, ExcludedLocation } from '@/types';
 
-export const runtime = 'edge';
+
 
 type Params = { params: Promise<{ id: string; scheduleId: string }> };
 
@@ -22,11 +22,26 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const schedule = await db.query.schedules.findFirst({
     where: and(eq(schema.schedules.id, scheduleId), eq(schema.schedules.projectId, id)),
-    with: { items: true },
+    with: {
+      items: true,
+      excludedLocations: {
+        with: { location: { columns: { id: true, name: true, address: true } } },
+      },
+    },
   });
   if (!schedule) return err('Not found', 404);
 
-  const csv = generateCsv(schedule as unknown as Schedule, project.title);
+  // 除外撮影地に場所名・住所を付加
+  const excludedLocations: ExcludedLocation[] = (schedule.excludedLocations ?? []).map((el) => ({
+    locationId: el.locationId,
+    name: el.location?.name ?? el.locationId,
+    address: el.location?.address ?? undefined,
+    reason: el.reason,
+    priority: el.priority,
+  }));
+
+  const scheduleData = { ...schedule, excludedLocations } as unknown as Schedule;
+  const csv = generateCsv(scheduleData, project.title);
   const filename = encodeURIComponent(`${project.title}_工程表.csv`);
 
   return new NextResponse(csv, {

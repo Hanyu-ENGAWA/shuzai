@@ -21,7 +21,7 @@ export function insertAutoMeal(
   // すでに昼食がある場合はスキップ
   const hasLunch = items.some(
     (item) =>
-      item.type === 'meal' &&
+      (item.type === 'meal' || item.type === 'auto_meal') &&
       hhmmToMinutes(item.startTime) >= LUNCH_START &&
       hhmmToMinutes(item.startTime) < LUNCH_END
   );
@@ -69,7 +69,7 @@ export function insertAutoMeal(
     date,
     startTime: insertAt,
     endTime: calcEndTime(insertAt, LUNCH_DURATION),
-    type: 'meal',
+    type: 'auto_meal',
     refId: mealRef?.id ?? null,
     name: mealRef?.name ?? lunchName,
     address: mealRef?.address ?? null,
