@@ -163,6 +163,7 @@ export interface ScheduleItem {
   mealDurationMin?: number | null;
   isOutsideWorkHours?: boolean;
   isAutoInserted?: boolean;
+  timeSlot?: string | null;
 }
 
 export interface ExcludedLocation {

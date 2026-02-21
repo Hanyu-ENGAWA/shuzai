@@ -194,6 +194,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         mealDurationMin: item.mealDurationMin ?? null,
         isOutsideWorkHours: item.isOutsideWorkHours ?? false,
         isAutoInserted: item.isAutoInserted ?? false,
+        timeSlot: item.timeSlot ?? null,
       }))
     );
   }

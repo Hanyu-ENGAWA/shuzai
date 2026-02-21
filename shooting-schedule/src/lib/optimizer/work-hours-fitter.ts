@@ -161,6 +161,7 @@ export function fitToWorkHours(input: FitterInput): FitterOutput {
         loc.name, loc.address, dayItems.length
       );
       shootItem.isOutsideWorkHours = isOutside;
+      shootItem.timeSlot = loc.timeSlot;
       shootItem.bufferBeforeMin = loc.bufferBefore;
       shootItem.bufferAfterMin = loc.bufferAfter;
       shootItem.includesMeal = loc.hasMeal;
@@ -232,6 +233,7 @@ export function fitToWorkHours(input: FitterInput): FitterOutput {
           loc.name, loc.address, dayItems.length
         );
         shootItem.isOutsideWorkHours = false; // 夜間撮影は意図的なので outside 扱いしない
+        shootItem.timeSlot = loc.timeSlot;
         shootItem.bufferBeforeMin = loc.bufferBefore;
         shootItem.bufferAfterMin = loc.bufferAfter;
         shootItem.includesMeal = loc.hasMeal;

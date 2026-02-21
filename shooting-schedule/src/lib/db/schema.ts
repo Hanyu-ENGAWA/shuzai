@@ -84,7 +84,7 @@ export const locations = sqliteTable('locations', {
 export const accommodations = sqliteTable('accommodations', {
   id: text('id').primaryKey(),
   projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
+  name: text('name'), // 任意（未指定時は自動提案）
   address: text('address'),
   placeId: text('place_id'),
   lat: real('lat'),
@@ -105,7 +105,7 @@ export const accommodations = sqliteTable('accommodations', {
 export const meals = sqliteTable('meals', {
   id: text('id').primaryKey(),
   projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
+  name: text('name'), // 任意（店舗未指定で時間枠のみ確保も可）
   address: text('address'),
   placeId: text('place_id'),
   lat: real('lat'),
@@ -192,6 +192,7 @@ export const scheduleItems = sqliteTable('schedule_items', {
   mealDurationMin: integer('meal_duration_min'),
   isOutsideWorkHours: integer('is_outside_work_hours', { mode: 'boolean' }).notNull().default(false),
   isAutoInserted: integer('is_auto_inserted', { mode: 'boolean' }).notNull().default(false),
+  timeSlot: text('time_slot'), // 撮影時間帯区分（shooting アイテムのみ: normal/early_morning/night/flexible）
 });
 
 // 除外撮影地（最適化で除外された地点）

@@ -33,22 +33,13 @@ const HOUR_END = 23;
 const TOTAL_HOURS = HOUR_END - HOUR_START;
 
 /** 撮影アイテムの色とアイコンを返す（早朝/通常/夜間で区別） */
-function getShootingStyle(
-  item: ScheduleItem,
-  project: Props['project']
-): { colorClass: string; icon: string } {
+function getShootingStyle(item: ScheduleItem): { colorClass: string; icon: string } {
   if (item.type !== 'shooting') {
     return { colorClass: TYPE_COLORS[item.type], icon: '' };
   }
-  if (!item.isOutsideWorkHours || !project) {
-    return { colorClass: 'bg-blue-500', icon: '' };
-  }
-  const workStartMin = hhmmToMinutes(project.workStartTime);
-  const itemStartMin = hhmmToMinutes(item.startTime);
-  if (itemStartMin < workStartMin) {
-    return { colorClass: 'bg-sky-300', icon: '🌅' };
-  }
-  return { colorClass: 'bg-blue-900', icon: '🌙' };
+  if (item.timeSlot === 'early_morning') return { colorClass: 'bg-sky-300', icon: '🌅' };
+  if (item.timeSlot === 'night') return { colorClass: 'bg-blue-900', icon: '🌙' };
+  return { colorClass: 'bg-blue-500', icon: '' };
 }
 
 /** その日の行程が稼働時間を超過しているか判定 */
@@ -146,7 +137,7 @@ export function TimelineView({ schedule, project }: Props) {
                   const left = Math.max(0, (startMin / totalMin) * 100);
                   const width = Math.max(0.5, ((endMin - startMin) / totalMin) * 100);
                   const isTransport = item.type === 'transport';
-                  const { colorClass, icon } = getShootingStyle(item, project);
+                  const { colorClass, icon } = getShootingStyle(item);
                   const blockColor = isTransport && item.travelFromPreviousMin
                     ? 'bg-green-400'
                     : colorClass;
