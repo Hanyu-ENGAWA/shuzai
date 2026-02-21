@@ -59,6 +59,8 @@ export function ProjectForm({ defaultValues, onSubmit, submitLabel = '作成', i
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
+      title: '',
+      description: '',
       durationMode: 'fixed',
       workStartTime: '09:00',
       workEndTime: '18:00',
