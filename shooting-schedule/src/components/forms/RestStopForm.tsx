@@ -28,7 +28,12 @@ interface Props {
 export function RestStopForm({ onSubmit, isLoading }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { duration: 15 },
+    defaultValues: {
+      name: '',
+      address: '',
+      duration: 15,
+      notes: '',
+    },
   });
 
   return (

@@ -46,6 +46,9 @@ export function LocationForm({ onSubmit, isLoading }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
+      name: '',
+      address: '',
+      placeId: '',
       shootingDuration: 60,
       bufferBefore: 10,
       bufferAfter: 10,
@@ -53,6 +56,11 @@ export function LocationForm({ onSubmit, isLoading }: Props) {
       mealDurationMin: 60,
       priority: 'medium',
       timeSlot: 'normal',
+      timeSlotStart: '',
+      timeSlotEnd: '',
+      preferredTimeStart: '',
+      preferredTimeEnd: '',
+      notes: '',
     },
   });
 

@@ -32,7 +32,15 @@ interface Props {
 export function MealForm({ onSubmit, isLoading }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { mealType: 'lunch', duration: 60 },
+    defaultValues: {
+      name: '',
+      address: '',
+      mealType: 'lunch',
+      scheduledDate: '',
+      scheduledTime: '',
+      duration: 60,
+      notes: '',
+    },
   });
 
   return (

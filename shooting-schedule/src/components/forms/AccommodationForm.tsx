@@ -33,7 +33,15 @@ interface Props {
 export function AccommodationForm({ onSubmit, isLoading }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', checkInTime: '15:00', checkOutTime: '10:00' },
+    defaultValues: {
+      name: '',
+      address: '',
+      checkInDate: '',
+      checkOutDate: '',
+      checkInTime: '15:00',
+      checkOutTime: '10:00',
+      notes: '',
+    },
   });
 
   return (

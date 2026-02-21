@@ -236,6 +236,10 @@ export const restStopsRelations = relations(restStops, ({ one }) => ({
   project: one(projects, { fields: [restStops.projectId], references: [projects.id] }),
 }));
 
+export const transportsRelations = relations(transports, ({ one }) => ({
+  project: one(projects, { fields: [transports.projectId], references: [projects.id] }),
+}));
+
 export const schedulesRelations = relations(schedules, ({ one, many }) => ({
   project: one(projects, { fields: [schedules.projectId], references: [projects.id] }),
   items: many(scheduleItems),

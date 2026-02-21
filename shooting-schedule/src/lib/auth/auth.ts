@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { getDbOnly } from '@/lib/api-helpers';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true, // サンドボックス・プロキシ環境でホストを信頼
   providers: [
     Credentials({
       name: 'credentials',
@@ -48,6 +49,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: 'jwt' },
   pages: {
     signIn: '/login',
+  },
+  cookies: {
+    sessionToken: {
+      name: 'authjs.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: false, // ローカル開発でHTTP/HTTPSどちらでも動作
+      },
+    },
+    callbackUrl: {
+      name: 'authjs.callback-url',
+      options: {
+        sameSite: 'lax',
+        path: '/',
+        secure: false,
+      },
+    },
+    csrfToken: {
+      name: 'authjs.csrf-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: false,
+      },
+    },
   },
   callbacks: {
     jwt({ token, user }) {
