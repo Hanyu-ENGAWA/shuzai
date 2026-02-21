@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { ok, err, getAuthAndDb } from '@/lib/api-helpers';
 import { schema } from '@/lib/db';
-import { eq, and, asc } from 'drizzle-orm';
+import { eq, and, asc, count } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { buildScheduleV2 } from '@/lib/optimizer/schedule-builder';
 import type { OptimizeInput, OptimizationType, DistanceMatrix } from '@/types';
@@ -23,7 +23,7 @@ async function fetchDistanceMatrix(
   const durationMin: number[][] = Array.from({ length: n }, () => Array(n).fill(-1));
   const distanceKm: number[][] = Array.from({ length: n }, () => Array(n).fill(-1));
 
-  // 10地点以下: 1回、11〜25地点: バッチ分割（origins 5件ずつ）
+  // 10地点以下: 1回、11〜25地点: バッチ分割（origins 10件ずつ）
   const BATCH_SIZE = 10;
   for (let batchStart = 0; batchStart < n; batchStart += BATCH_SIZE) {
     const batchOrigins = withCoords.slice(batchStart, batchStart + BATCH_SIZE);
@@ -146,9 +146,18 @@ export async function POST(req: NextRequest, { params }: Params) {
   const scheduleId = uuidv4();
   const now = new Date();
 
+  // バージョン番号: 既存スケジュール数 + 1
+  const [{ value: existingCount }] = await db
+    .select({ value: count() })
+    .from(schema.schedules)
+    .where(eq(schema.schedules.projectId, id));
+  const version = (existingCount ?? 0) + 1;
+
   const [savedSchedule] = await db.insert(schema.schedules).values({
     id: scheduleId,
     projectId: id,
+    version,
+    scheduleMode: project.durationMode ?? 'fixed',
     generatedAt: scheduleData.generatedAt,
     totalDays: scheduleData.totalDays,
     notes: scheduleData.notes,

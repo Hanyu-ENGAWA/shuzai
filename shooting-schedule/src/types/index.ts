@@ -28,7 +28,9 @@ export interface Project {
   returnLng?: number | null;
   returnPlaceId?: string | null;
   returnSameAsDeparture: boolean;
-  // デフォルト移動手段
+  // 現地までの移動手段
+  transportModeToLocation: 'transit' | 'car' | 'other';
+  // 現地での移動手段
   defaultTransportMode: TransportMode;
   createdAt: Date;
   updatedAt: Date;
@@ -57,6 +59,8 @@ export interface Location {
   timeSlot: TimeSlot;
   timeSlotStart?: string | null;
   timeSlotEnd?: string | null;
+  preferredTimeStart?: string | null;
+  preferredTimeEnd?: string | null;
   notes?: string | null;
   order: number;
   createdAt: Date;
@@ -164,6 +168,7 @@ export interface ScheduleItem {
 export interface ExcludedLocation {
   locationId: string;
   name: string;
+  address?: string | null;
   reason?: string | null;
   priority?: string | null;
 }
@@ -171,6 +176,8 @@ export interface ExcludedLocation {
 export interface Schedule {
   id: string;
   projectId: string;
+  version: number;
+  scheduleMode: 'fixed' | 'auto';
   generatedAt: Date;
   totalDays: number;
   notes?: string | null;

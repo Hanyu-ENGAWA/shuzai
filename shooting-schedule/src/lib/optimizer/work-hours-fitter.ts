@@ -63,7 +63,6 @@ export function fitToWorkHours(input: FitterInput): FitterOutput {
   const excludedLocs: ExcludedLocation[] = [];
   let hasOvertimeWarning = false;
 
-  // 処理対象の地点キュー（fixed モードでは除外可能）
   const locationQueue = [...orderedLocations];
 
   let calculatedDays = 1;
@@ -73,54 +72,48 @@ export function fitToWorkHours(input: FitterInput): FitterOutput {
 
   while (locationQueue.length > 0 && (fixedMode ? day <= totalDays : true)) {
     const date = startDate ? getDateString(startDate, day - 1) : null;
-    let currentMin = effectiveStartMin;
 
-    // 宿泊地からのチェックアウト（day 2以降は workStart から）
-    if (day > 1) {
-      currentMin = workStartMin;
-    }
+    // Day 1 は早朝開始、Day 2 以降は workStartMin から
+    let currentMin = day === 1 ? effectiveStartMin : workStartMin;
 
     const dayItems: ScheduleItem[] = [];
-    let prevLocIndex = -1; // orderedLocations 内の前の地点インデックス
+    const nightQueue: Location[] = []; // 当日の夜間撮影地
+    let prevLocIndex = -1;
 
+    // ── 通常稼働フェーズ（early_morning / normal / flexible）──────────
     while (locationQueue.length > 0) {
       const loc = locationQueue[0];
       const locOrigIndex = orderedLocations.indexOf(loc);
 
+      // 夜間撮影地は後回し（nightQueue へ）
+      if (loc.timeSlot === 'night') {
+        nightQueue.push(locationQueue.shift()!);
+        continue;
+      }
+
       // 移動時間を取得
-      let travelMin = DEFAULT_TRAVEL_MIN;
-      let travelKm = 0;
-      if (prevLocIndex >= 0 && travelDurationMatrix) {
-        const rawTravel = travelDurationMatrix[prevLocIndex]?.[locOrigIndex] ?? -1;
-        travelMin = rawTravel >= 0 ? rawTravel : DEFAULT_TRAVEL_MIN;
-      } else if (dayItems.length === 0 && day === 1 && departureTravelMin != null && departureTravelMin > 0) {
-        // Day 1 最初の地点: 出発地からの移動
-        travelMin = departureTravelMin;
-        travelKm = departureTravelKm ?? 0;
-      } else if (dayItems.length === 0) {
-        travelMin = 0; // 当日最初の地点は移動なし
-      }
-      if (prevLocIndex >= 0 && travelDistanceMatrix) {
-        const rawDist = travelDistanceMatrix[prevLocIndex]?.[locOrigIndex] ?? 0;
-        travelKm = rawDist >= 0 ? rawDist : 0;
-      }
+      const { travelMin, travelKm } = getTravelInfo(
+        prevLocIndex, locOrigIndex, dayItems, day,
+        travelDurationMatrix, travelDistanceMatrix,
+        departureTravelMin, departureTravelKm
+      );
 
-      // 当日の開始時刻を考慮（早朝・夜間時間帯）
-      let locationStart = currentMin + travelMin;
-
-      // 時間帯制約のチェック
+      // 早朝撮影: 指定時刻に開始（当日冒頭のみ）
       if (loc.timeSlot === 'early_morning' && loc.timeSlotStart) {
         const slotStart = hhmmToMinutes(loc.timeSlotStart);
-        locationStart = Math.min(locationStart, slotStart);
+        currentMin = Math.min(currentMin, slotStart);
       }
+
+      let locationStart = currentMin + (dayItems.length > 0 ? travelMin : (day === 1 && departureTravelMin ? travelMin : 0));
 
       const locDuration = calcLocationTotalMinutes(loc);
       const mealAddition = loc.hasMeal ? loc.mealDurationMin : 0;
       const locEndMin = locationStart + locDuration + mealAddition;
 
-      // 稼働時間内に収まるか確認
-      if (locEndMin > effectiveEndMin && dayItems.length > 0) {
-        // fixed モードかつ低優先度なら除外
+      // 通常稼働終了（workEndMin）を超えるか確認
+      // 早朝地点は workStartMin を上限、その他は workEndMin を上限とする
+      const normalEnd = loc.timeSlot === 'early_morning' ? workStartMin : workEndMin;
+      if (locEndMin > normalEnd && dayItems.length > 0) {
         if (fixedMode && (loc.priority === 'low' || loc.priority === 'medium')) {
           locationQueue.shift();
           excludedLocs.push({
@@ -131,30 +124,17 @@ export function fitToWorkHours(input: FitterInput): FitterOutput {
           });
           continue;
         }
-        // auto モード or 必須・高優先度 → 翌日へ
-        break;
+        break; // 翌日へ
       }
 
-      if (locEndMin > effectiveEndMin) {
-        // 1日に1地点も入れられない場合（稼働時間が極端に短い）
+      if (locEndMin > normalEnd) {
         hasOvertimeWarning = true;
       }
 
       locationQueue.shift();
 
-      // 移動アイテムを追加（dayItems が空でなく、travelMin > 0 の場合）
-      if (dayItems.length > 0 && travelMin > 0) {
-        const travelItem = makeItem(
-          scheduleId, day, date, currentMin, travelMin, 'transport', null,
-          '移動', null, dayItems.length
-        );
-        travelItem.travelFromPreviousMin = travelMin;
-        travelItem.travelFromPreviousKm = travelKm;
-        dayItems.push(travelItem);
-        currentMin += travelMin;
-        totalDistanceKm += travelKm;
-      } else if (dayItems.length === 0 && travelMin > 0) {
-        // 当日最初でも移動がある場合（前日の宿泊地から）
+      // 移動アイテム追加
+      if (travelMin > 0) {
         const travelItem = makeItem(
           scheduleId, day, date, currentMin, travelMin, 'transport', null,
           '移動', null, dayItems.length
@@ -172,11 +152,10 @@ export function fitToWorkHours(input: FitterInput): FitterOutput {
         currentMin += loc.bufferBefore;
       }
 
-      // 稼働時間外チェック
-      const isOutside = currentMin + loc.shootingDuration > effectiveEndMin;
+      // 撮影
+      const isOutside = loc.timeSlot !== 'early_morning' && currentMin + loc.shootingDuration > workEndMin;
       if (isOutside) hasOvertimeWarning = true;
 
-      // 撮影
       const shootItem = makeItem(
         scheduleId, day, date, currentMin, loc.shootingDuration, 'shooting', loc.id,
         loc.name, loc.address, dayItems.length
@@ -196,7 +175,79 @@ export function fitToWorkHours(input: FitterInput): FitterOutput {
         currentMin += loc.bufferAfter;
       }
 
+      // 早朝撮影後は workStartMin まで進める（通常稼働開始まで待機）
+      if (loc.timeSlot === 'early_morning') {
+        currentMin = Math.max(currentMin, workStartMin);
+      }
+
       prevLocIndex = locOrigIndex;
+    }
+
+    // ── 夜間撮影フェーズ ──────────────────────────────────────────────
+    if (nightQueue.length > 0) {
+      // 通常稼働終了後から夜間撮影を開始
+      currentMin = Math.max(currentMin, workEndMin);
+
+      for (const loc of nightQueue) {
+        const locOrigIndex = orderedLocations.indexOf(loc);
+
+        // timeSlotStart が指定されていればその時刻まで待つ
+        if (loc.timeSlotStart) {
+          currentMin = Math.max(currentMin, hhmmToMinutes(loc.timeSlotStart));
+        }
+
+        // 移動時間
+        const { travelMin, travelKm } = getTravelInfo(
+          prevLocIndex, locOrigIndex, dayItems, day,
+          travelDurationMatrix, travelDistanceMatrix,
+          undefined, undefined
+        );
+
+        if (travelMin > 0) {
+          const travelItem = makeItem(
+            scheduleId, day, date, currentMin, travelMin, 'transport', null,
+            '移動', null, dayItems.length
+          );
+          travelItem.travelFromPreviousMin = travelMin;
+          travelItem.travelFromPreviousKm = travelKm;
+          dayItems.push(travelItem);
+          currentMin += travelMin;
+          totalDistanceKm += travelKm;
+        }
+
+        // バッファ前
+        if (loc.bufferBefore > 0) {
+          dayItems.push(makeItem(scheduleId, day, date, currentMin, loc.bufferBefore, 'buffer', null, `${loc.name} 準備`, null, dayItems.length));
+          currentMin += loc.bufferBefore;
+        }
+
+        // 夜間撮影（effectiveEndMin を超える場合は overtime 警告）
+        const locDuration = calcLocationTotalMinutes(loc);
+        const locEndMin = currentMin + locDuration;
+        const isOvertime = locEndMin > effectiveEndMin;
+        if (isOvertime) hasOvertimeWarning = true;
+
+        const shootItem = makeItem(
+          scheduleId, day, date, currentMin, loc.shootingDuration, 'shooting', loc.id,
+          loc.name, loc.address, dayItems.length
+        );
+        shootItem.isOutsideWorkHours = false; // 夜間撮影は意図的なので outside 扱いしない
+        shootItem.bufferBeforeMin = loc.bufferBefore;
+        shootItem.bufferAfterMin = loc.bufferAfter;
+        shootItem.includesMeal = loc.hasMeal;
+        shootItem.mealDurationMin = loc.hasMeal ? loc.mealDurationMin : null;
+        dayItems.push(shootItem);
+        currentMin += loc.shootingDuration;
+        totalDurationMin += loc.shootingDuration;
+
+        // バッファ後
+        if (loc.bufferAfter > 0) {
+          dayItems.push(makeItem(scheduleId, day, date, currentMin, loc.bufferAfter, 'buffer', null, `${loc.name} 片付け`, null, dayItems.length));
+          currentMin += loc.bufferAfter;
+        }
+
+        prevLocIndex = locOrigIndex;
+      }
     }
 
     // 昼食自動挿入
@@ -208,7 +259,6 @@ export function fitToWorkHours(input: FitterInput): FitterOutput {
 
     if (!fixedMode && locationQueue.length === 0) break;
     if (fixedMode && day > totalDays && locationQueue.length > 0) {
-      // fixed モードで収まりきらない地点は除外
       for (const loc of locationQueue) {
         excludedLocs.push({
           locationId: loc.id,
@@ -230,6 +280,38 @@ export function fitToWorkHours(input: FitterInput): FitterOutput {
     hasOvertimeWarning,
     calculatedDays,
   };
+}
+
+/** 移動時間・距離を取得するヘルパー */
+function getTravelInfo(
+  prevLocIndex: number,
+  locOrigIndex: number,
+  dayItems: ScheduleItem[],
+  day: number,
+  travelDurationMatrix: number[][] | null | undefined,
+  travelDistanceMatrix: number[][] | null | undefined,
+  departureTravelMin: number | undefined,
+  departureTravelKm: number | undefined,
+): { travelMin: number; travelKm: number } {
+  let travelMin = DEFAULT_TRAVEL_MIN;
+  let travelKm = 0;
+
+  if (prevLocIndex >= 0 && travelDurationMatrix) {
+    const raw = travelDurationMatrix[prevLocIndex]?.[locOrigIndex] ?? -1;
+    travelMin = raw >= 0 ? raw : DEFAULT_TRAVEL_MIN;
+  } else if (dayItems.length === 0 && day === 1 && departureTravelMin != null && departureTravelMin > 0) {
+    travelMin = departureTravelMin;
+    travelKm = departureTravelKm ?? 0;
+  } else if (dayItems.length === 0) {
+    travelMin = 0;
+  }
+
+  if (prevLocIndex >= 0 && travelDistanceMatrix) {
+    const raw = travelDistanceMatrix[prevLocIndex]?.[locOrigIndex] ?? 0;
+    travelKm = raw >= 0 ? raw : 0;
+  }
+
+  return { travelMin, travelKm };
 }
 
 function makeItem(

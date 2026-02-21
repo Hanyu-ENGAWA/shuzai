@@ -26,6 +26,8 @@ const schema = z.object({
   timeSlot: z.enum(['normal', 'early_morning', 'night', 'flexible']).default('normal'),
   timeSlotStart: z.string().optional(),
   timeSlotEnd: z.string().optional(),
+  preferredTimeStart: z.string().optional(),
+  preferredTimeEnd: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -150,8 +152,8 @@ export function LocationForm({ onSubmit, isLoading }: Props) {
         <div className="grid grid-cols-3 gap-3">
           <FormField control={form.control} name="bufferBefore" render={({ field }) => (
             <FormItem>
-              <FormLabel>前バッファ（分）</FormLabel>
-              <FormControl><Input type="number" min={0} {...field} /></FormControl>
+              <FormLabel>到着後バッファ（分）</FormLabel>
+              <FormControl><Input type="number" min={0} max={60} step={5} {...field} /></FormControl>
               <FormDescription className="text-xs">準備時間</FormDescription>
               <FormMessage />
             </FormItem>
@@ -165,8 +167,8 @@ export function LocationForm({ onSubmit, isLoading }: Props) {
           )} />
           <FormField control={form.control} name="bufferAfter" render={({ field }) => (
             <FormItem>
-              <FormLabel>後バッファ（分）</FormLabel>
-              <FormControl><Input type="number" min={0} {...field} /></FormControl>
+              <FormLabel>撤収バッファ（分）</FormLabel>
+              <FormControl><Input type="number" min={0} max={60} step={5} {...field} /></FormControl>
               <FormDescription className="text-xs">片付け時間</FormDescription>
               <FormMessage />
             </FormItem>
@@ -203,12 +205,29 @@ export function LocationForm({ onSubmit, isLoading }: Props) {
             <FormField control={form.control} name="mealDurationMin" render={({ field }) => (
               <FormItem>
                 <FormLabel>食事時間（分）</FormLabel>
-                <FormControl><Input type="number" min={0} {...field} /></FormControl>
+                <FormControl><Input type="number" min={0} step={5} {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
           </div>
         )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <FormField control={form.control} name="preferredTimeStart" render={({ field }) => (
+            <FormItem>
+              <FormLabel>希望撮影開始時間</FormLabel>
+              <FormControl><Input type="time" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="preferredTimeEnd" render={({ field }) => (
+            <FormItem>
+              <FormLabel>希望撮影終了時間</FormLabel>
+              <FormControl><Input type="time" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
 
         <FormField control={form.control} name="notes" render={({ field }) => (
           <FormItem>

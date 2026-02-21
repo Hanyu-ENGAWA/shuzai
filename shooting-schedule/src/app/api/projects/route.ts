@@ -28,6 +28,7 @@ const createProjectSchema = z.object({
   returnLng: z.number().optional(),
   returnPlaceId: z.string().optional(),
   returnSameAsDeparture: z.boolean().default(true),
+  transportModeToLocation: z.enum(['transit', 'car', 'other']).default('car'),
   defaultTransportMode: z.enum(['driving', 'transit', 'walking', 'bicycling']).default('driving'),
 });
 

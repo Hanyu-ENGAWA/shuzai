@@ -41,7 +41,11 @@ export const projects = sqliteTable('projects', {
   returnLng: real('return_lng'),
   returnPlaceId: text('return_place_id'),
   returnSameAsDeparture: integer('return_same_as_departure', { mode: 'boolean' }).notNull().default(true),
-  // デフォルト移動手段 (driving / transit / walking / bicycling)
+  // 現地までの移動手段 (transit / car / other)
+  transportModeToLocation: text('transport_mode_to_location', {
+    enum: ['transit', 'car', 'other'],
+  }).notNull().default('car'),
+  // 現地での移動手段 (driving / transit / walking / bicycling)
   defaultTransportMode: text('default_transport_mode', {
     enum: ['driving', 'transit', 'walking', 'bicycling'],
   }).notNull().default('driving'),
@@ -59,8 +63,8 @@ export const locations = sqliteTable('locations', {
   lat: real('lat'),
   lng: real('lng'),
   shootingDuration: integer('shooting_duration').notNull().default(60), // 分
-  bufferBefore: integer('buffer_before').notNull().default(0),   // 分
-  bufferAfter: integer('buffer_after').notNull().default(0),    // 分
+  bufferBefore: integer('buffer_before').notNull().default(10),   // 分
+  bufferAfter: integer('buffer_after').notNull().default(10),    // 分
   hasMeal: integer('has_meal', { mode: 'boolean' }).notNull().default(false),
   mealType: text('meal_type', { enum: ['breakfast', 'lunch', 'dinner'] }),
   mealDurationMin: integer('meal_duration_min').notNull().default(60), // 食事時間(分)
@@ -68,6 +72,8 @@ export const locations = sqliteTable('locations', {
   timeSlot: text('time_slot', { enum: ['normal', 'early_morning', 'night', 'flexible'] }).notNull().default('normal'),
   timeSlotStart: text('time_slot_start'), // HH:mm (early_morning/night 時のみ)
   timeSlotEnd: text('time_slot_end'),     // HH:mm
+  preferredTimeStart: text('preferred_time_start'), // HH:mm 希望撮影開始時間（任意）
+  preferredTimeEnd: text('preferred_time_end'),     // HH:mm 希望撮影終了時間（任意）
   notes: text('notes'),
   order: integer('order').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
@@ -147,6 +153,8 @@ export const transports = sqliteTable('transports', {
 export const schedules = sqliteTable('schedules', {
   id: text('id').primaryKey(),
   projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  version: integer('version').notNull().default(1),
+  scheduleMode: text('schedule_mode', { enum: ['fixed', 'auto'] }).notNull().default('fixed'),
   generatedAt: integer('generated_at', { mode: 'timestamp' }).notNull(),
   totalDays: integer('total_days').notNull(),
   notes: text('notes'),
@@ -235,4 +243,9 @@ export const schedulesRelations = relations(schedules, ({ one, many }) => ({
 
 export const scheduleItemsRelations = relations(scheduleItems, ({ one }) => ({
   schedule: one(schedules, { fields: [scheduleItems.scheduleId], references: [schedules.id] }),
+}));
+
+export const excludedLocationsRelations = relations(excludedLocations, ({ one }) => ({
+  schedule: one(schedules, { fields: [excludedLocations.scheduleId], references: [schedules.id] }),
+  location: one(locations, { fields: [excludedLocations.locationId], references: [locations.id] }),
 }));

@@ -35,6 +35,7 @@ const schema = z.object({
   returnLng: z.number().optional(),
   returnPlaceId: z.string().optional(),
   // 移動手段
+  transportModeToLocation: z.enum(['transit', 'car', 'other']).default('car'),
   defaultTransportMode: z.enum(['driving', 'transit', 'walking', 'bicycling']).default('driving'),
 });
 
@@ -66,6 +67,7 @@ export function ProjectForm({ defaultValues, onSubmit, submitLabel = '作成', i
       allowNightShooting: false,
       nightShootingEnd: '22:00',
       returnSameAsDeparture: true,
+      transportModeToLocation: 'car',
       defaultTransportMode: 'driving',
       ...defaultValues,
     },
@@ -158,6 +160,23 @@ export function ProjectForm({ defaultValues, onSubmit, submitLabel = '作成', i
                 )}
               </div>
             )}
+
+            <FormField control={form.control} name="transportModeToLocation" render={({ field }) => (
+              <FormItem>
+                <FormLabel>現地までの移動手段</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="transit">公共交通機関</SelectItem>
+                    <SelectItem value="car">車</SelectItem>
+                    <SelectItem value="other">その他</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
 
             <FormField control={form.control} name="defaultTransportMode" render={({ field }) => (
               <FormItem>
