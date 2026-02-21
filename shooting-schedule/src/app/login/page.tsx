@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -36,19 +35,55 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
 
-    const result = await signIn('credentials', {
-      email: data.email,
-      password: data.password,
-      redirect: false,
-    });
+    try {
+      // Step 1: CSRFトークンを相対パスで取得（next-auth/reactのsignInはlocalhost固定のため直接fetchを使用）
+      const csrfRes = await fetch('/api/auth/csrf');
+      const { csrfToken } = await csrfRes.json();
 
-    if (result?.error) {
-      setError('メールアドレスまたはパスワードが正しくありません');
+      // Step 2: ログインリクエストを相対パスで送信
+      const loginRes = await fetch('/api/auth/callback/credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          email: data.email,
+          password: data.password,
+          csrfToken,
+          callbackUrl: '/dashboard',
+          json: 'true',
+        }),
+        redirect: 'manual', // リダイレクトを自動追従しない
+      });
+
+      // 302または200はログイン成功
+      if (loginRes.status === 302 || loginRes.status === 200 || loginRes.type === 'opaqueredirect') {
+        // Step 3: セッション確認
+        const sessionRes = await fetch('/api/auth/session');
+        const session = await sessionRes.json();
+
+        if (session?.user?.email) {
+          toast.success('ログインしました');
+          router.push('/dashboard');
+          router.refresh();
+        } else {
+          setError('メールアドレスまたはパスワードが正しくありません');
+          setIsLoading(false);
+        }
+      } else {
+        // レスポンスボディにエラーメッセージが含まれる場合
+        let errorMsg = 'メールアドレスまたはパスワードが正しくありません';
+        try {
+          const body = await loginRes.json();
+          if (body?.message) errorMsg = body.message;
+        } catch {
+          // ignore JSON parse error
+        }
+        setError(errorMsg);
+        setIsLoading(false);
+      }
+    } catch (e) {
+      console.error('Login error:', e);
+      setError('ログインに失敗しました。再度お試しください。');
       setIsLoading(false);
-    } else {
-      toast.success('ログインしました');
-      router.push('/dashboard');
-      router.refresh();
     }
   };
 
@@ -73,14 +108,14 @@ export default function LoginPage() {
               <FormField control={form.control} name="email" render={({ field }) => (
                 <FormItem>
                   <FormLabel>メールアドレス</FormLabel>
-                  <FormControl><Input type="email" placeholder="example@email.com" {...field} /></FormControl>
+                  <FormControl><Input type="email" placeholder="example@email.com" autoComplete="email" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="password" render={({ field }) => (
                 <FormItem>
                   <FormLabel>パスワード</FormLabel>
-                  <FormControl><Input type="password" {...field} /></FormControl>
+                  <FormControl><Input type="password" autoComplete="current-password" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />

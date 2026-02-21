@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signOut, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Camera, LogOut, LayoutDashboard } from 'lucide-react';
 
@@ -11,8 +11,21 @@ export function Header() {
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await signOut({ redirect: false });
+    try {
+      // CSRFトークンを相対パスで取得してサインアウト（signOut()はlocalhost固定のため直接fetchを使用）
+      const csrfRes = await fetch('/api/auth/csrf');
+      const { csrfToken } = await csrfRes.json();
+      await fetch('/api/auth/signout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ csrfToken, callbackUrl: '/login', json: 'true' }),
+        redirect: 'manual',
+      });
+    } catch {
+      // サインアウトAPIが失敗してもリダイレクトする
+    }
     router.push('/login');
+    router.refresh();
   };
 
   return (
