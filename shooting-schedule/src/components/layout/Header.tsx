@@ -14,7 +14,8 @@ export function Header() {
     try {
       // CSRFトークンを相対パスで取得してサインアウト（signOut()はlocalhost固定のため直接fetchを使用）
       const csrfRes = await fetch('/api/auth/csrf');
-      const { csrfToken } = await csrfRes.json();
+      const csrfData = await csrfRes.json() as { csrfToken: string };
+      const { csrfToken } = csrfData;
       await fetch('/api/auth/signout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

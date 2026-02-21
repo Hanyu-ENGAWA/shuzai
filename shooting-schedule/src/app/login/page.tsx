@@ -38,7 +38,8 @@ export default function LoginPage() {
     try {
       // Step 1: CSRFトークンを相対パスで取得（next-auth/reactのsignInはlocalhost固定のため直接fetchを使用）
       const csrfRes = await fetch('/api/auth/csrf');
-      const { csrfToken } = await csrfRes.json();
+      const csrfData = await csrfRes.json() as { csrfToken: string };
+      const { csrfToken } = csrfData;
 
       // Step 2: ログインリクエストを相対パスで送信
       const loginRes = await fetch('/api/auth/callback/credentials', {
@@ -58,7 +59,7 @@ export default function LoginPage() {
       if (loginRes.status === 302 || loginRes.status === 200 || loginRes.type === 'opaqueredirect') {
         // Step 3: セッション確認
         const sessionRes = await fetch('/api/auth/session');
-        const session = await sessionRes.json();
+        const session = await sessionRes.json() as { user?: { email?: string } };
 
         if (session?.user?.email) {
           toast.success('ログインしました');
@@ -72,7 +73,7 @@ export default function LoginPage() {
         // レスポンスボディにエラーメッセージが含まれる場合
         let errorMsg = 'メールアドレスまたはパスワードが正しくありません';
         try {
-          const body = await loginRes.json();
+          const body = await loginRes.json() as { message?: string };
           if (body?.message) errorMsg = body.message;
         } catch {
           // ignore JSON parse error

@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { err, getAuthAndDb } from '@/lib/api-helpers';
 import { schema } from '@/lib/db';

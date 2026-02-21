@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
-import { createDb, createLocalDb } from '@/lib/db';
+import { createDb } from '@/lib/db';
 import type { Database } from '@/lib/db';
 
 export type ApiResponse<T = unknown> = {
@@ -24,16 +24,12 @@ type AuthenticatedContext = {
 
 /**
  * DB インスタンスを取得する
- * - Cloudflare Pages (本番/プレビュー): getRequestContext() で D1 を取得
- * - ローカル開発 (next dev): better-sqlite3 でローカル SQLite ファイルを使用
+ * - Cloudflare Pages (Edge Runtime): getRequestContext() で D1 を取得
  */
 async function getDb(): Promise<Database> {
-  if (process.env.NODE_ENV === 'production' || process.env.CF_PAGES) {
-    const { getRequestContext } = await import('@cloudflare/next-on-pages');
-    const ctx = getRequestContext();
-    return createDb(ctx.env.DB);
-  }
-  return createLocalDb();
+  const { getRequestContext } = await import('@cloudflare/next-on-pages');
+  const ctx = getRequestContext();
+  return createDb(ctx.env.DB);
 }
 
 export async function getAuthAndDb(_req: NextRequest): Promise<AuthenticatedContext | null> {
