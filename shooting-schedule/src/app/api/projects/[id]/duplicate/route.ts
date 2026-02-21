@@ -4,7 +4,7 @@ import { schema } from '@/lib/db';
 import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 
-export const runtime = 'edge';
+
 
 type Params = { params: Promise<{ id: string }> };
 

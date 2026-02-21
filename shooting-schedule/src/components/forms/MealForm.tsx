@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PlaceAutocomplete } from '@/components/maps/PlaceAutocomplete';
 
 const schema = z.object({
-  name: z.string().min(1, '店名は必須です'),
+  name: z.string().optional(),  // 店名は任意
   address: z.string().optional(),
   placeId: z.string().optional(),
   lat: z.number().optional(),
@@ -18,7 +18,7 @@ const schema = z.object({
   mealType: z.enum(['breakfast', 'lunch', 'dinner']),
   scheduledDate: z.string().optional(),
   scheduledTime: z.string().optional(),
-  duration: z.coerce.number().int().min(1).default(60),
+  duration: z.coerce.number().int().min(5).default(60),
   notes: z.string().optional(),
 });
 
@@ -32,14 +32,20 @@ interface Props {
 export function MealForm({ onSubmit, isLoading }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { mealType: 'lunch', duration: 60 },
+    defaultValues: {
+      name: '',
+      address: '',
+      notes: '',
+      mealType: 'lunch',
+      duration: 60,
+    },
   });
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <FormLabel className="text-sm font-medium">食事場所を検索</FormLabel>
+          <FormLabel className="text-sm font-medium">食事場所を検索（任意）</FormLabel>
           <div className="mt-1">
             <PlaceAutocomplete
               onSelect={(d) => {
@@ -56,8 +62,8 @@ export function MealForm({ onSubmit, isLoading }: Props) {
 
         <FormField control={form.control} name="name" render={({ field }) => (
           <FormItem>
-            <FormLabel>店名 *</FormLabel>
-            <FormControl><Input {...field} placeholder="例: 〇〇レストラン" /></FormControl>
+            <FormLabel>店名（任意）</FormLabel>
+            <FormControl><Input {...field} placeholder="未指定の場合は「昼食休憩」等で自動入力" /></FormControl>
             <FormMessage />
           </FormItem>
         )} />
@@ -99,13 +105,15 @@ export function MealForm({ onSubmit, isLoading }: Props) {
         <FormField control={form.control} name="duration" render={({ field }) => (
           <FormItem>
             <FormLabel>所要時間（分）</FormLabel>
-            <FormControl><Input type="number" min={1} {...field} /></FormControl>
+            <FormControl>
+              <Input type="number" min={5} max={180} step={5} {...field} />
+            </FormControl>
             <FormMessage />
           </FormItem>
         )} />
 
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? '追加中...' : '食事場所を追加'}
+          {isLoading ? '追加中...' : '食事を追加'}
         </Button>
       </form>
     </Form>

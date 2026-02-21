@@ -16,8 +16,8 @@ const schema = z.object({
   durationMode: z.enum(['fixed', 'auto']),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  workStartTime: z.string().default('08:00'),
-  workEndTime: z.string().default('19:00'),
+  workStartTime: z.string().default('09:00'),
+  workEndTime: z.string().default('18:00'),
   allowEarlyMorning: z.boolean().default(false),
   earlyMorningStart: z.string().default('05:00'),
   allowNightShooting: z.boolean().default(false),
@@ -37,9 +37,14 @@ export function ProjectForm({ defaultValues, onSubmit, submitLabel = '作成', i
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
+      // Zod v4 + @hookform/resolvers v3: string フィールドは必ず '' を設定（undefined だと ZodError 発生）
+      title: '',
+      description: '',
       durationMode: 'fixed',
-      workStartTime: '08:00',
-      workEndTime: '19:00',
+      startDate: '',
+      endDate: '',
+      workStartTime: '09:00',
+      workEndTime: '18:00',
       allowEarlyMorning: false,
       earlyMorningStart: '05:00',
       allowNightShooting: false,

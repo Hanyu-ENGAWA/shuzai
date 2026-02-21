@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcryptjs from 'bcryptjs';
-import { createDb } from '@/lib/db';
 import { schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
-import { getRequestContext } from '@cloudflare/next-on-pages';
+import { getDbOnly } from '@/lib/api-helpers';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
-
-export const runtime = 'edge';
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -29,8 +26,7 @@ export async function POST(req: NextRequest) {
 
     const { email, password, name } = parsed.data;
 
-    const ctx = getRequestContext();
-    const db = createDb(ctx.env.DB);
+    const db = await getDbOnly();
 
     const existing = await db.query.users.findFirst({
       where: eq(schema.users.email, email),

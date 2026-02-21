@@ -49,3 +49,11 @@ local.db
 
 # drizzle
 drizzle/meta/
+
+# Local development SQLite
+.local-dev.sqlite
+.local-dev.sqlite-wal
+.local-dev.sqlite-shm
+
+# Local env
+.env.local

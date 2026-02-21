@@ -1,6 +1,6 @@
 'use client';
 
-export const runtime = 'edge';
+
 
 import { useEffect, useState, startTransition } from 'react';
 import { useParams } from 'next/navigation';
@@ -129,7 +129,11 @@ export default function SchedulePage() {
                     <CardTitle className="text-base">タイムライン表示</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <TimelineView schedule={currentSchedule} />
+                    <TimelineView
+                      schedule={currentSchedule}
+                      workStartTime={currentProject?.workStartTime ?? '09:00'}
+                      workEndTime={currentProject?.workEndTime ?? '18:00'}
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>

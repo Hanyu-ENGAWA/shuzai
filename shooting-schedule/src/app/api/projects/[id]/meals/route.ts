@@ -5,12 +5,12 @@ import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
-export const runtime = 'edge';
+
 
 type Params = { params: Promise<{ id: string }> };
 
 const mealSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().optional(),  // nullable（店舗未指定可）
   address: z.string().optional(),
   placeId: z.string().optional(),
   lat: z.number().optional(),
